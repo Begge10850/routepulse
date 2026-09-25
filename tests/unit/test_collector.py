@@ -4,7 +4,11 @@ import httpx
 import pytest
 from google.transit import gtfs_realtime_pb2
 
-from routepulse.collector import collect_once
+from routepulse.collector import (
+    DuplicateSnapshotError,
+    NotModifiedError,
+    collect_once,
+)
 from routepulse.config import CollectorConfig
 from routepulse.storage import sha256_bytes
 
@@ -116,6 +120,53 @@ def test_collect_once_rejects_corrupt_protobuf(tmp_path: Path) -> None:
             config=make_config(),
             output_directory=tmp_path,
             client=client,
+        )
+
+    assert list(tmp_path.iterdir()) == []
+
+def test_collect_once_handles_not_modified_response(tmp_path: Path) -> None:
+    def handle_request(request: httpx.Request) -> httpx.Response:
+        assert request.headers["If-None-Match"] == '"previous-etag"'
+        return httpx.Response(status_code=304)
+
+    transport = httpx.MockTransport(handle_request)
+
+    with (
+        httpx.Client(transport=transport) as client,
+        pytest.raises(NotModifiedError, match="not modified"),
+    ):
+        collect_once(
+            config=make_config(),
+            output_directory=tmp_path,
+            client=client,
+            previous_etag='"previous-etag"',
+        )
+
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_collect_once_rejects_duplicate_checksum(tmp_path: Path) -> None:
+    payload = make_valid_feed()
+    checksum = sha256_bytes(payload)
+
+    def handle_request(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            status_code=200,
+            headers={"Content-Type": "application/protobuf"},
+            content=payload,
+        )
+
+    transport = httpx.MockTransport(handle_request)
+
+    with (
+        httpx.Client(transport=transport) as client,
+        pytest.raises(DuplicateSnapshotError, match=checksum),
+    ):
+        collect_once(
+            config=make_config(),
+            output_directory=tmp_path,
+            client=client,
+            known_checksums={checksum},
         )
 
     assert list(tmp_path.iterdir()) == []

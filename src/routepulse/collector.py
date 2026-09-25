@@ -17,6 +17,14 @@ from routepulse.storage import (
 )
 
 
+class NotModifiedError(Exception):
+    """Indicate that the server returned HTTP 304 Not Modified."""
+
+
+class DuplicateSnapshotError(Exception):
+    """Indicate that the downloaded payload was already collected."""
+
+
 @dataclass(frozen=True)
 class CollectionResult:
     """Metadata produced by one successful collection attempt."""
@@ -45,21 +53,32 @@ def collect_once(
     config: CollectorConfig,
     output_directory: Path,
     client: httpx.Client,
+    previous_etag: str | None = None,
+    known_checksums: set[str] | None = None,
 ) -> CollectionResult:
-    """Download, validate, and save one realtime snapshot."""
+    """Download, validate, and save one unique realtime snapshot."""
     output_directory.mkdir(parents=True, exist_ok=True)
     free_disk_gb = ensure_minimum_free_space(
         output_directory,
         config.minimum_free_disk_gb,
     )
 
+    headers = {"User-Agent": config.user_agent}
+
+    if previous_etag is not None:
+        headers["If-None-Match"] = previous_etag
+
     request_started_at = datetime.now(UTC)
     timer_started = perf_counter()
 
     response = client.get(
         config.realtime_url,
-        headers={"User-Agent": config.user_agent},
+        headers=headers,
     )
+
+    if response.status_code == 304:
+        raise NotModifiedError("Realtime feed was not modified")
+
     response.raise_for_status()
 
     request_finished_at = datetime.now(UTC)
@@ -87,6 +106,12 @@ def collect_once(
         ) from error
 
     checksum = sha256_bytes(payload)
+
+    if known_checksums is not None and checksum in known_checksums:
+        raise DuplicateSnapshotError(
+            f"Snapshot checksum was already collected: {checksum}",
+        )
+
     timestamp_text = request_started_at.strftime("%Y%m%dT%H%M%S%fZ")
     filename = f"{timestamp_text}_{checksum[:12]}.pb"
     snapshot_path = output_directory / filename
