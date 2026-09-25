@@ -1,0 +1,34 @@
+# Python virtual environment
+.venv/
+
+# Python-generated files
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+
+# Collected and processed data
+data/raw/
+data/interim/
+data/processed/
+
+# Runtime logs
+logs/
+*.log
+
+# Local application files
+.DS_Store
+.vscode/
+.idea/
+
+# Build and packaging files
+build/
+dist/
+*.egg-info/
