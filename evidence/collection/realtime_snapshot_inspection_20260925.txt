@@ -1,0 +1,10 @@
+Snapshot path: data/raw/gtfs_realtime/phase2_20260925_sample.pb
+File size: 9,795,626 bytes
+SHA-256: 9e21eb03597cfac1b7daa613f74a4cbef4101a9088f276e861bd979912415479
+GTFS-Realtime version: 2.0
+Total entities: 9,171
+Trip updates: 9,171
+Vehicle positions: 0
+Alerts: 0
+Deleted entities: 0
+Feed timestamp: 2026-09-25T09:23:07+00:00

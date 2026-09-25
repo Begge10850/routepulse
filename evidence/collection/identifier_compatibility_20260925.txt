@@ -1,0 +1,22 @@
+Static trip IDs: 250,579
+Static route IDs: 1,257
+Static stop IDs: 42,148
+
+Trip realtime unique IDs: 9,168
+Trip matched unique IDs: 9,168
+Trip unmatched unique IDs: 0
+Trip unique-ID match rate: 100.00%
+Trip unmatched examples: []
+
+Route realtime unique IDs: 768
+Route matched unique IDs: 768
+Route unmatched unique IDs: 0
+Route unique-ID match rate: 100.00%
+Route unmatched examples: []
+
+Stop realtime unique IDs: 19,208
+Stop matched unique IDs: 18,880
+Stop unmatched unique IDs: 328
+Stop unique-ID match rate: 98.29%
+Stop unmatched examples: ['032401', '100005', '100006', '101304', '103506']
+

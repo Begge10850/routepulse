@@ -1,0 +1,2 @@
+4c14d1ccf7eb38c2eff709d5ecf82d91b189337878cbb8b6adb09b1199d6ffa5  data/raw/gtfs_static/vbb_gtfs_20260925.zip
+9e21eb03597cfac1b7daa613f74a4cbef4101a9088f276e861bd979912415479  data/raw/gtfs_realtime/phase2_20260925_sample.pb

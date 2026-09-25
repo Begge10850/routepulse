@@ -1,0 +1,11 @@
+HTTP/2 200 
+date: Fri, 25 Sep 2026 10:05:12 GMT
+content-type: application/zip
+content-length: 78379003
+server: cloudflare
+content-disposition: attachment; filename="gtfs.zip"
+cache-control: must-revalidate, post-check=0, pre-check=0
+pragma: public
+cf-cache-status: DYNAMIC
+cf-ray: a4093586ba35051f-TXL
+

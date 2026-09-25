@@ -1,0 +1,12 @@
+HTTP/2 200 
+accept-ranges: bytes
+alt-svc: h3=":443"; ma=2592000
+cache-control: public, max-age=0
+content-type: application/protobuf; schedule_sha256=a3a3d426
+date: Fri, 25 Sep 2026 09:23:13 GMT
+etag: "22947d-1VoQBf4J2C5sN5sXVJ87GvI8uAw"
+last-modified: Fri, 25 Sep 2026 09:23:08 GMT
+vary: accept-encoding
+via: 1.1 Caddy
+x-content-type-options: nosniff
+
