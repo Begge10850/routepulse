@@ -1,0 +1,20 @@
+{
+  "alerts": 0,
+  "checksum_sha256": "2ec6f343f61d2237904f917b830f7c49bd7a4afd62cc088b95e1103739ea74e8",
+  "content_type": "application/protobuf; schedule_sha256=a3a3d426",
+  "deleted_entities": 0,
+  "downloaded_bytes": 10576637,
+  "duration_ms": 437.35800008289516,
+  "etag": "\"220627-FieVYpqVhWizWQhmU4JNOE4SGLY\"",
+  "feed_timestamp": "2026-09-25T11:17:20+00:00",
+  "free_disk_gb": 127.76473236083984,
+  "gtfs_realtime_version": "2.0",
+  "http_status": 200,
+  "last_modified": "Fri, 25 Sep 2026 11:17:20 GMT",
+  "request_finished_at": "2026-09-25T11:17:22.699291+00:00",
+  "request_started_at": "2026-09-25T11:17:22.261835+00:00",
+  "snapshot_path": "data/raw/gtfs_realtime/20260925T111722261835Z_2ec6f343f61d.pb",
+  "total_entities": 10086,
+  "trip_updates": 10086,
+  "vehicle_positions": 0
+}
