@@ -1,0 +1,19 @@
+{
+  "analysis_end_utc": "2026-09-27T03:50:16.710964+00:00",
+  "analysis_start_utc": "2026-09-25T12:20:16.813088+00:00",
+  "checksum_mismatches": 0,
+  "duration_hours": 39.49997163222222,
+  "first_attempt": 1,
+  "large_gaps_after_window": 28,
+  "last_attempt": 791,
+  "missing_sidecars": 0,
+  "missing_snapshots": 0,
+  "selected_attempts": 791,
+  "selected_bytes": 4835699213,
+  "selected_saved_snapshots": 777,
+  "status_counts": {
+    "duplicate": 4,
+    "not_modified": 10,
+    "saved": 777
+  }
+}
