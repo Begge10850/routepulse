@@ -9,6 +9,8 @@ description = "An evaluated data pipeline for monitoring public-transport feed q
 readme = "README.md"
 requires-python = ">=3.12,<3.13"
 dependencies = [
+    "boto3>=1.40,<2",
+    "botocore[crt]>=1.40,<2",
     "httpx>=0.28,<1",
     "gtfs-realtime-bindings>=3,<4",
     "python-dotenv>=1,<2",
