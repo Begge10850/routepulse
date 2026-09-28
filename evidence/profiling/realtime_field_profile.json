@@ -1,0 +1,129 @@
+{
+  "failures": [],
+  "field_availability": {
+    "arrival.delay": {
+      "denominator": 94839920,
+      "percentage": 35.8045,
+      "present": 33957001
+    },
+    "arrival.time": {
+      "denominator": 94839920,
+      "percentage": 99.8782,
+      "present": 94724367
+    },
+    "arrival.uncertainty": {
+      "denominator": 94839920,
+      "percentage": 0.0,
+      "present": 0
+    },
+    "departure.delay": {
+      "denominator": 94839920,
+      "percentage": 37.3634,
+      "present": 35435427
+    },
+    "departure.time": {
+      "denominator": 94839920,
+      "percentage": 99.9058,
+      "present": 94750579
+    },
+    "departure.uncertainty": {
+      "denominator": 94839920,
+      "percentage": 0.0,
+      "present": 0
+    },
+    "stop_time_update.arrival": {
+      "denominator": 94839920,
+      "percentage": 99.8782,
+      "present": 94724367
+    },
+    "stop_time_update.departure": {
+      "denominator": 94839920,
+      "percentage": 99.9058,
+      "present": 94750579
+    },
+    "stop_time_update.schedule_relationship": {
+      "denominator": 94839920,
+      "percentage": 98.5971,
+      "present": 93509449
+    },
+    "stop_time_update.stop_id": {
+      "denominator": 94839920,
+      "percentage": 100.0,
+      "present": 94839920
+    },
+    "stop_time_update.stop_sequence": {
+      "denominator": 94839920,
+      "percentage": 98.5971,
+      "present": 93509449
+    },
+    "trip.direction_id": {
+      "denominator": 4518265,
+      "percentage": 100.0,
+      "present": 4518265
+    },
+    "trip.route_id": {
+      "denominator": 4518265,
+      "percentage": 100.0,
+      "present": 4518265
+    },
+    "trip.schedule_relationship": {
+      "denominator": 4518265,
+      "percentage": 100.0,
+      "present": 4518265
+    },
+    "trip.start_date": {
+      "denominator": 4518265,
+      "percentage": 100.0,
+      "present": 4518265
+    },
+    "trip.start_time": {
+      "denominator": 4518265,
+      "percentage": 0.0,
+      "present": 0
+    },
+    "trip.trip_id": {
+      "denominator": 4518265,
+      "percentage": 100.0,
+      "present": 4518265
+    },
+    "trip_update.delay": {
+      "denominator": 4518265,
+      "percentage": 0.0,
+      "present": 0
+    },
+    "trip_update.timestamp": {
+      "denominator": 4518265,
+      "percentage": 100.0,
+      "present": 4518265
+    },
+    "trip_update.vehicle": {
+      "denominator": 4518265,
+      "percentage": 0.0,
+      "present": 0
+    },
+    "trip_update.vehicle_id": {
+      "denominator": 4518265,
+      "percentage": 0.0,
+      "present": 0
+    }
+  },
+  "schedule_relationships": {
+    "stop_time_update.NO_DATA": 90751,
+    "stop_time_update.SCHEDULED": 91876145,
+    "stop_time_update.SKIPPED": 1542553,
+    "trip.CANCELED": 20408,
+    "trip.SCHEDULED": 4497857
+  },
+  "snapshots_failed": 0,
+  "snapshots_listed": 777,
+  "snapshots_profiled": 777,
+  "source_inventory": "evidence/collection/analysis_window_inventory.jsonl",
+  "totals": {
+    "alerts": 0,
+    "deleted_entities": 0,
+    "stop_time_updates": 94839920,
+    "total_entities": 4518265,
+    "trip_updates": 4518265,
+    "vehicle_positions": 0
+  }
+}
