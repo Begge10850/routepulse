@@ -1,0 +1,53 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ListOwnedBuckets",
+      "Effect": "Allow",
+      "Action": [
+        "s3:ListAllMyBuckets"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "CreateRoutePulseBucketInFrankfurt",
+      "Effect": "Allow",
+      "Action": [
+        "s3:CreateBucket"
+      ],
+      "Resource": "arn:aws:s3:::routepulse-raw-eu-central-1-9b355f4a",
+      "Condition": {
+        "StringEquals": {
+          "s3:LocationConstraint": "eu-central-1"
+        }
+      }
+    },
+    {
+      "Sid": "ConfigureAndInspectRoutePulseBucket",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetEncryptionConfiguration",
+        "s3:PutEncryptionConfiguration",
+        "s3:GetBucketLocation",
+        "s3:GetBucketPublicAccessBlock",
+        "s3:PutBucketPublicAccessBlock",
+        "s3:GetBucketTagging",
+        "s3:PutBucketTagging",
+        "s3:ListBucket",
+        "s3:ListBucketMultipartUploads"
+      ],
+      "Resource": "arn:aws:s3:::routepulse-raw-eu-central-1-9b355f4a"
+    },
+    {
+      "Sid": "ManageRoutePulseRawObjects",
+      "Effect": "Allow",
+      "Action": [
+        "s3:AbortMultipartUpload",
+        "s3:GetObject",
+        "s3:ListMultipartUploadParts",
+        "s3:PutObject"
+      ],
+      "Resource": "arn:aws:s3:::routepulse-raw-eu-central-1-9b355f4a/*"
+    }
+  ]
+}
