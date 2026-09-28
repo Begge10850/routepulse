@@ -1,0 +1,27 @@
+{
+  "audited_snapshot_records": 777,
+  "bucket": "routepulse-raw-eu-central-1-9b355f4a",
+  "encryption": {
+    "algorithm": "AES256",
+    "type": "SSE-S3"
+  },
+  "idempotency_rerun": {
+    "skipped_matching_objects": 1556,
+    "uploaded_objects": 0
+  },
+  "initial_upload": {
+    "skipped_matching_objects": 0,
+    "uploaded_objects": 1556
+  },
+  "public_access_block": {
+    "block_public_acls": true,
+    "block_public_policy": true,
+    "ignore_public_acls": true,
+    "restrict_public_buckets": true
+  },
+  "region": "eu-central-1",
+  "source_inventory": "evidence/collection/analysis_window_inventory.jsonl",
+  "verified_on": "2026-09-28",
+  "verified_s3_object_count": 1556,
+  "verified_s3_total_bytes": 4836718925
+}
