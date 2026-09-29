@@ -1,0 +1,14 @@
+{
+  "generated_at": "2026-09-29T01:28:55.432107+00:00",
+  "inventory_path": "/Users/trevaogwang/Documents/mobile-projects/routepulse/evidence/collection/analysis_window_inventory.jsonl",
+  "output_root": "/Users/trevaogwang/Documents/mobile-projects/routepulse/data/processed/realtime",
+  "snapshots_processed": 777,
+  "snapshots_failed": 0,
+  "feed_snapshot_rows": 777,
+  "trip_update_rows": 4518265,
+  "stop_time_update_rows": 94839920,
+  "feed_parquet_files": 1,
+  "trip_parquet_files": 10,
+  "stop_parquet_files": 49,
+  "failures": []
+}
