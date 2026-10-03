@@ -3,6 +3,9 @@
 RoutePulse is an evaluated mobility-data pipeline for monitoring the
 availability, freshness, and quality of public transport information.
 
+**Live dashboard:**
+[routepulse-qdwrvckapptwi9xp74ueuuo.streamlit.app](https://routepulse-qdwrvckapptwi9xp74ueuuo.streamlit.app/)
+
 The project will collect official VBB GTFS and GTFS-Realtime data, preserve
 raw snapshots, structure selected records, load validated datasets into
 Snowflake, and calculate documented data-quality and operational metrics.
@@ -18,7 +21,9 @@ The evaluated analysis window and dashboard are complete:
 - an interactive Streamlit operations dashboard validated against additive SQL
   numerators and denominators;
 - a restricted Snowflake service identity prepared for public Streamlit
-  Community Cloud deployment.
+  Community Cloud deployment;
+- a public Streamlit Community Cloud deployment verified against the read-only
+  Snowflake service identity.
 
 ## Implemented pipeline
 

@@ -1,5 +1,24 @@
 # RoutePulse v4 deployment and acceptance
 
+## Public deployment verification — 3 October 2026
+
+Streamlit Community Cloud successfully deployed commit `d236660` from the
+`main` branch with Python 3.12 and `app/streamlit_app.py` as the entry point:
+
+- [public RoutePulse dashboard](https://routepulse-qdwrvckapptwi9xp74ueuuo.streamlit.app/)
+- the initial all-modes view loaded 1,755,847 observed stop visits and
+  1,528,690 visits with a reported delay figure;
+- selecting Bus recalculated the scope to 1,197,111 observed stop visits,
+  6.6% reported more than five minutes late and 88.3% delay-data availability;
+- the Lines view rendered both rate and volume rankings;
+- the Data quality view rendered its coverage chart, regional table and
+  reconciliation statement;
+- the browser reported no runtime errors.
+
+The embedded Vega renderer emitted non-blocking compatibility, sort-domain and
+empty-extent warnings. They did not prevent the tested views or controls from
+rendering, but should be revisited when the chart stack is upgraded.
+
 ## Purpose
 
 Version 4 replaces the long single-page dashboard with one global transport-mode

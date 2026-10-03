@@ -1,5 +1,11 @@
 # RoutePulse public Streamlit deployment
 
+Live deployment:
+[routepulse-qdwrvckapptwi9xp74ueuuo.streamlit.app](https://routepulse-qdwrvckapptwi9xp74ueuuo.streamlit.app/)
+
+The production deployment uses Python 3.12, the `main` branch and
+`app/streamlit_app.py` as its entry point.
+
 This deployment makes RoutePulse available at a normal `*.streamlit.app` URL.
 Visitors do **not** need a Snowflake account. The app connects to Snowflake on
 the server through a dedicated read-only service identity.
