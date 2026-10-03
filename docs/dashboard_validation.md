@@ -19,6 +19,32 @@ The embedded Vega renderer emitted non-blocking compatibility, sort-domain and
 empty-extent warnings. They did not prevent the tested views or controls from
 rendering, but should be revisited when the chart stack is upgraded.
 
+## Transport-mode map optimization — 3 October 2026
+
+Commit `f6965fd` changed the header summaries and network map to fetch compact
+presentation data for every transport mode once per one-hour cache cycle. Mode
+clicks now filter cached Pandas data and reuse already parsed map paths and
+state boundaries instead of issuing four new mode-specific Snowflake queries.
+
+Single-run browser timings measured from a mode-button click until the new
+mode's map-reading message became visible in the same Community Cloud app:
+
+| Transport mode | Before | After | Reduction |
+|---|---:|---:|---:|
+| S-Bahn | 1,555 ms | 308 ms | 80.2% |
+| U-Bahn | 1,569 ms | 294 ms | 81.3% |
+
+The optimized local build also switched S-Bahn, Tram and U-Bahn in 293 ms,
+322 ms and 298 ms respectively. These are indicative interaction timings from
+one browser session, not a concurrency or cold-start load test. A suspended
+Community Cloud app or Snowflake warehouse can still make the first page load
+slower.
+
+Post-change acceptance checks confirmed the unchanged all-mode map totals of
+957 passenger-facing paths and 40,205 rendered coordinates, the U-Bahn KPI
+scope of 121,874 observed stop visits, working Lines and Data quality views,
+and no browser runtime errors.
+
 ## Purpose
 
 Version 4 replaces the long single-page dashboard with one global transport-mode
