@@ -1,0 +1,17 @@
+# Streamlit in Snowflake apps run with a pre-installed version of Streamlit.
+# An External Access Integration is needed to use another package source.
+[project]
+name = "streamlit-app"
+requires-python = "~=3.11.0"
+version = "0.0.1"
+description = ""
+dependencies = [
+    "streamlit[snowflake]"
+]
+
+[tool.uv]
+constraint-dependencies = ["numba>=0.56.0"]
+exclude-newer = "7 days"
+
+[tool.uv.exclude-newer-package]
+streamlit = false

@@ -1,5 +1,6 @@
 # Python virtual environment
 .venv/
+.venv-dashboard/
 
 # Python-generated files
 __pycache__/
@@ -13,11 +14,17 @@ htmlcov/
 .env
 .env.*
 !.env.example
+.streamlit/secrets.toml
+.secrets/
+*.p8
+*.pem
+*.key
 
 # Collected and processed data
 data/raw/
 data/interim/
 data/processed/
+data/gtfs/
 
 # Runtime logs
 logs/
