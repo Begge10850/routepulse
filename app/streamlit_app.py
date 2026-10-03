@@ -12,6 +12,7 @@ st.set_page_config(
     page_title="RoutePulse: Berlin–Brandenburg Operations Snapshot",
     page_icon="🚌",
     layout="wide",
+    initial_sidebar_state="expanded",
 )
 
 
@@ -121,6 +122,7 @@ LOW_SAMPLE_UPPER = 300
 LOW_COVERAGE_PERCENTAGE = 60.0
 MIN_HEADLINE_HOUR_DELAY_EVENTS = 100
 PRESENTATION_CACHE_TTL_SECONDS = 3600
+VIEW_OPTIONS = ["Network map", "Stations", "Lines", "When", "Data quality"]
 
 
 def choose_segment(
@@ -450,6 +452,59 @@ def load_headline_hour_metrics() -> pd.DataFrame:
     )
 
 
+@st.cache_data(ttl=PRESENTATION_CACHE_TTL_SECONDS, show_spinner=False)
+def load_station_metrics() -> pd.DataFrame:
+    """Load compact station rankings for every mode and supported region."""
+    return run_query(
+        f"""
+        SELECT
+            stations.scope_mode,
+            stations.event_region,
+            stations.station_name,
+            stations.station_lat,
+            stations.station_lon,
+            stations.unique_stop_events AS stop_events,
+            stations.delay_reported_events AS delay_events,
+            stations.late_events,
+            ROUND(
+                100.0 * stations.delay_reported_events
+                / NULLIF(stations.unique_stop_events, 0), 2
+            ) AS delay_coverage,
+            ROUND(
+                100.0 * stations.late_events
+                / NULLIF(stations.delay_reported_events, 0), 2
+            ) AS late_percentage,
+            ROUND(
+                100.0 * regions.late_events
+                / NULLIF(regions.delay_reported_events, 0), 2
+            ) AS scope_late_percentage
+        FROM ROUTEPULSE.ANALYTICS.DASHBOARD_STATION_METRICS AS stations
+        JOIN ROUTEPULSE.ANALYTICS.DASHBOARD_REGION_METRICS AS regions
+          ON stations.scope_mode = regions.scope_mode
+         AND stations.event_region = regions.event_region
+        WHERE stations.event_region IN ('Berlin', 'Brandenburg')
+          AND stations.delay_reported_events >= {MIN_RANK_DELAY_EVENTS}
+        """
+    )
+
+
+@st.cache_data(ttl=PRESENTATION_CACHE_TTL_SECONDS, show_spinner=False)
+def prepare_station_ranking(scope_mode: str, station_region: str) -> pd.DataFrame:
+    """Filter and rank cached station metrics without another warehouse query."""
+    station_data = load_station_metrics()
+    station_data = station_data[
+        (station_data["SCOPE_MODE"] == scope_mode)
+        & (station_data["EVENT_REGION"] == station_region)
+    ].copy()
+    station_data = station_data.sort_values(
+        ["LATE_PERCENTAGE", "DELAY_EVENTS"],
+        ascending=[False, False],
+    ).head(10)
+    station_data = station_data.reset_index(drop=True)
+    station_data["STATION_RANK"] = station_data.index + 1
+    return station_data
+
+
 window = run_query(
     """
     SELECT
@@ -471,6 +526,43 @@ raw_kpi = run_query(
     "SELECT * FROM ROUTEPULSE.ANALYTICS.KPI_SUMMARY"
 ).iloc[0]
 
+with st.sidebar:
+    st.title("Explore RoutePulse")
+    st.caption(
+        "Change the analysis here. Collapse this panel when you want more "
+        "room for charts and maps."
+    )
+    selected_mode = st.selectbox(
+        "Transport mode",
+        MODE_OPTIONS,
+        index=0,
+        key="mode_filter_v5",
+    )
+    selected_view = st.radio(
+        "Analysis",
+        VIEW_OPTIONS,
+        index=0,
+        key="view_navigation_v5",
+    )
+    selected_station_region = "Berlin"
+    if selected_view == "Stations":
+        st.divider()
+        selected_station_region = st.radio(
+            "Station region",
+            ["Berlin", "Brandenburg"],
+            index=0,
+            key="station_region_v5",
+        )
+    selected_hour_metric = "% over 5 minutes"
+    if selected_view == "When":
+        st.divider()
+        selected_hour_metric = st.radio(
+            "Hourly measure",
+            ["% over 5 minutes", "P90 delay"],
+            index=0,
+            key="hour_measure_v5",
+        )
+
 collection_start = pd.to_datetime(window["FIRST_EVENT_BERLIN"])
 collection_end = pd.to_datetime(window["LAST_EVENT_BERLIN"])
 collection_hours = float(window["OBSERVED_WINDOW_HOURS"])
@@ -488,15 +580,9 @@ st.warning(
     "represent a normal weekday commute."
 )
 
-selected_mode = choose_segment(
-    "Transport mode",
-    MODE_OPTIONS,
-    "All modes",
-    "mode_filter_v4",
-)
 scope_mode_label = "all modes" if selected_mode == "All modes" else selected_mode
 st.caption(
-    f"Showing: {scope_mode_label} · all regions"
+    f"Showing: {scope_mode_label} · {selected_view.lower()}"
 )
 
 scope_metrics = load_scope_metrics()
@@ -549,24 +635,6 @@ st.markdown(
         background: rgba(30, 64, 175, 0.13);
         color: #DBEAFE;
         margin: 0.25rem 0 0.55rem 0;
-    }
-    .st-key-view_navigation_shell [data-testid="stSegmentedControl"] button {
-        border: 0;
-        border-bottom: 2px solid transparent;
-        border-radius: 0;
-        background: transparent;
-        padding-left: 0.75rem;
-        padding-right: 0.75rem;
-    }
-    .st-key-view_navigation_shell [data-testid="stSegmentedControl"] button[aria-pressed="true"] {
-        border-bottom-color: #60A5FA;
-        background: transparent;
-    }
-    .st-key-hour_measure_shell [data-testid="stSegmentedControl"] button,
-    .st-key-station_region_v4 [data-testid="stSegmentedControl"] button {
-        min-height: 2rem;
-        padding: 0.2rem 0.7rem;
-        font-size: 0.82rem;
     }
     @media (max-width: 760px) {
         .rp-card-grid { grid-template-columns: 1fr; }
@@ -673,15 +741,6 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-view_options = ["Network map", "Stations", "Lines", "When", "Data quality"]
-with st.container(key="view_navigation_shell"):
-    selected_view = choose_segment(
-        "Dashboard view",
-        view_options,
-        "Network map",
-        "view_navigation_v4",
-        label_visibility="collapsed",
-    )
 st.divider()
 
 
@@ -952,51 +1011,9 @@ def render_stations():
         "Out of every 100 visits at each station that had a delay figure, "
         "how many were reported more than 5 minutes behind the timetable?"
     )
-    selected_station_region = choose_segment(
-        "Show stations in",
-        ["Berlin", "Brandenburg"],
-        "Berlin",
-        "station_region_v4",
-    )
-    station_data = run_query(
-        f"""
-        WITH station_metrics AS (
-            SELECT
-                station_name,
-                station_lat,
-                station_lon,
-                unique_stop_events AS stop_events,
-                delay_reported_events AS delay_events,
-                late_events,
-                ROUND(
-                    100.0 * delay_reported_events
-                    / NULLIF(unique_stop_events, 0), 2
-                ) AS delay_coverage,
-                ROUND(
-                    100.0 * late_events
-                    / NULLIF(delay_reported_events, 0), 2
-                ) AS late_percentage
-            FROM ROUTEPULSE.ANALYTICS.DASHBOARD_STATION_METRICS
-            WHERE scope_mode = {sql_string(selected_mode)}
-              AND event_region = {sql_string(selected_station_region)}
-              AND delay_reported_events >= {MIN_RANK_DELAY_EVENTS}
-        ),
-        scope_average AS (
-            SELECT
-                ROUND(
-                    100.0 * late_events
-                    / NULLIF(delay_reported_events, 0), 2
-                ) AS scope_late_percentage
-            FROM ROUTEPULSE.ANALYTICS.DASHBOARD_REGION_METRICS
-            WHERE scope_mode = {sql_string(selected_mode)}
-              AND event_region = {sql_string(selected_station_region)}
-        )
-        SELECT station_metrics.*, scope_average.scope_late_percentage
-        FROM station_metrics
-        CROSS JOIN scope_average
-        ORDER BY late_percentage DESC, delay_events DESC
-        LIMIT 10
-        """
+    station_data = prepare_station_ranking(
+        selected_mode,
+        selected_station_region,
     )
     if station_data.empty:
         st.info(
@@ -1006,8 +1023,6 @@ def render_stations():
         )
         return
 
-    station_data = station_data.reset_index(drop=True)
-    station_data["STATION_RANK"] = station_data.index + 1
     scope_average = float(station_data.iloc[0]["SCOPE_LATE_PERCENTAGE"])
     average_mode_label = (
         "All-mode" if selected_mode == "All modes" else selected_mode
@@ -1382,13 +1397,15 @@ def render_lines():
     previous_line = st.session_state.get("highlight_line_v4", "None")
     if previous_line not in ["None", *line_keys]:
         st.session_state["highlight_line_v4"] = "None"
-    selected_line_key = st.selectbox(
-        "See where a line runs",
-        ["None", *line_keys],
-        format_func=lambda key: line_labels.get(key, key),
-        key="highlight_line_v4",
-        help="This controls only the detailed line map, not the global scope.",
-    )
+    with st.sidebar:
+        st.divider()
+        selected_line_key = st.selectbox(
+            "See where a line runs",
+            ["None", *line_keys],
+            format_func=lambda key: line_labels.get(key, key),
+            key="highlight_line_v4",
+            help="This controls only the detailed line map, not the global scope.",
+        )
 
     if selected_line_key != "None":
         render_selected_line_map(selected_line_key, line_labels[selected_line_key])
@@ -1681,13 +1698,7 @@ def render_category_comparison():
 
 def render_when():
     st.header("When did delays show up?")
-    with st.container(key="hour_measure_shell"):
-        metric_choice = choose_segment(
-            "Hourly measure",
-            ["% over 5 minutes", "P90 delay"],
-            "% over 5 minutes",
-            "hour_measure_v4",
-        )
+    metric_choice = selected_hour_metric
     hourly = run_query(
         f"""
         SELECT

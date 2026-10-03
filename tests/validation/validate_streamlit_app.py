@@ -35,9 +35,13 @@ def main():
         "LOW_COVERAGE_PERCENTAGE = 60.0",
         "MIN_HEADLINE_HOUR_DELAY_EVENTS = 100",
         "PRESENTATION_CACHE_TTL_SECONDS = 3600",
+        'initial_sidebar_state="expanded"',
+        "with st.sidebar:",
         "def load_scope_metrics()",
         "def load_headline_line_metrics()",
         "def load_headline_hour_metrics()",
+        "def load_station_metrics()",
+        "def prepare_station_ranking(scope_mode: str, station_region: str)",
         "def load_network_paths()",
         "def load_state_boundary_features()",
         "def prepare_network_map_data(mode: str)",
@@ -100,7 +104,7 @@ def main():
     ):
         forbid(source, stale)
 
-    assert source.count("selected_view ==") == 4
+    assert source.count("selected_view ==") == 6
     assert "GROUP BY observation_hour_berlin" in models
     assert "scope_metric_events = source_events" in models
     assert "COUNT(*) = 1755847" in models
