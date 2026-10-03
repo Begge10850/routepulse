@@ -1,5 +1,34 @@
 # RoutePulse v4 deployment and acceptance
 
+## Sidebar and station-filter optimization — 4 October 2026
+
+Commit `38434a3` moved the global transport-mode and analysis controls into a
+native Streamlit sidebar. The sidebar is expanded on the first visit and can be
+collapsed by the reader, leaving more of the main canvas available for the KPI
+story, charts and maps. View-specific controls also appear there: station
+region in Stations, line-map selection in Lines, and hourly measure in When.
+
+The Stations view now loads the compact eligible station metrics for every
+mode and both supported regions once per one-hour presentation-cache cycle.
+Berlin/Brandenburg clicks filter and rank that cached Pandas data instead of
+issuing another Snowflake query.
+
+Public Community Cloud verification on the deployed `main` branch measured:
+
+| Interaction | Time |
+|---|---:|
+| First opening of Stations after deployment | 2,079 ms |
+| Berlin → Brandenburg after station data was cached | 436 ms |
+| Brandenburg → Berlin after station data was cached | 532 ms |
+| U-Bahn network map switch | 544 ms |
+| Warm S-Bahn network map switch | 446 ms |
+
+These are indicative timings from one browser session, not a cold-start or
+concurrency benchmark. The public app rendered the initially expanded sidebar,
+the Berlin and Brandenburg rankings, and the updated network map without a
+visible application error. Local acceptance measured the two warmed station
+region switches at 291 ms and 306 ms.
+
 ## Public deployment verification — 3 October 2026
 
 Streamlit Community Cloud successfully deployed commit `d236660` from the
@@ -103,9 +132,10 @@ must not change or duplicate the source event table.
 - The P90 explanation says "at or below", not "shorter than".
 - The engineering strip shows the raw-to-unique event consolidation and zero
   duplicate-key validation.
-- Network map, Stations, Lines, When and Data quality are underlined navigation
-  choices; changing the view runs only that view's queries.
-- The showing caption contains only the selected mode and all-region scope.
+- The sidebar is expanded on initial load and can be collapsed by the reader.
+- Network map, Stations, Lines, When and Data quality are vertical sidebar
+  choices; changing the view renders only that analysis.
+- The showing caption contains the selected mode and analysis view.
 - The duplicated mode-rate key finding is absent, and technical definitions are
   inside About the data.
 
@@ -127,8 +157,9 @@ must not change or duplicate the source event table.
 
 ### Stations
 
-- Berlin and Brandenburg can be inspected separately without changing the
-  global mode scope.
+- Berlin and Brandenburg can be inspected separately from the sidebar without
+  changing the global mode scope or issuing another query after the compact
+  station dataset is cached.
 - The page asks "Which stations were late most often?" and explains
   the rate as a count out of every 100 visits with a delay figure.
 - The ranking is titled "Stations with the most frequent serious delays" and
@@ -156,8 +187,8 @@ must not change or duplicate the source event table.
 - A specific mode shows the top ten eligible passenger-facing lines.
 - Ranking labels show the line and one start-to-end description without the
   operator; the operator and full direction details remain in tooltips.
-- The `See where a line runs` dropdown defaults to None. Selecting a line draws
-  one representative scheduled path and its observed stops.
+- The sidebar's `See where a line runs` dropdown defaults to None. Selecting a
+  line draws one representative scheduled path and its observed stops.
 - `Most often late` and `Most late stop visits` appear as two short lists; the
   former rate-versus-volume scatter is absent.
 - Paler bars identify limited samples, and tooltips retain the denominator and
@@ -168,7 +199,8 @@ must not change or duplicate the source event table.
 
 ### When
 
-- The chart toggles between over-five-minute share and P90 delay.
+- The sidebar control toggles the chart between over-five-minute share and P90
+  delay.
 - The selected delay measure and event volume appear in two vertically stacked
   panels sharing one time axis; there is no secondary y-axis.
 - A day/date band below the hourly ticks clearly labels each observed calendar
@@ -204,7 +236,8 @@ must not change or duplicate the source event table.
 
 Check at 1366×768 and at a standard wide desktop size:
 
-- mode choices remain readable;
+- the initially expanded sidebar keeps mode, view and conditional controls
+  readable and can be collapsed to recover chart width;
 - KPI cards do not overlap;
 - the view navigation is visible without excessive scrolling;
 - charts have readable axis labels and tooltips;
