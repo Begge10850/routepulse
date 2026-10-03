@@ -70,7 +70,7 @@ except Exception:
     st.stop()
 
 
-@st.cache_data(ttl=600)
+@st.cache_data(ttl=600, show_spinner=False)
 def run_query(query: str) -> pd.DataFrame:
     return session.sql(query).to_pandas()
 
@@ -120,6 +120,7 @@ MIN_RANK_DELAY_EVENTS = 100
 LOW_SAMPLE_UPPER = 300
 LOW_COVERAGE_PERCENTAGE = 60.0
 MIN_HEADLINE_HOUR_DELAY_EVENTS = 100
+PRESENTATION_CACHE_TTL_SECONDS = 3600
 
 
 def choose_segment(
@@ -371,6 +372,84 @@ def view_state_from_points(points: pd.DataFrame) -> pdk.ViewState:
     )
 
 
+@st.cache_data(ttl=PRESENTATION_CACHE_TTL_SECONDS, show_spinner=False)
+def load_scope_metrics() -> pd.DataFrame:
+    """Load every transport-mode KPI once so mode switches stay local."""
+    return run_query(
+        """
+        SELECT
+            scope_mode,
+            unique_stop_events AS stop_events,
+            delay_reported_events AS delay_events,
+            late_events,
+            ROUND(
+                100.0 * delay_reported_events
+                / NULLIF(unique_stop_events, 0), 2
+            ) AS delay_coverage,
+            ROUND(
+                100.0 * late_events
+                / NULLIF(delay_reported_events, 0), 2
+            ) AS late_percentage,
+            p90_delay_minutes
+        FROM ROUTEPULSE.ANALYTICS.DASHBOARD_SCOPE_METRICS
+        """
+    )
+
+
+@st.cache_data(ttl=PRESENTATION_CACHE_TTL_SECONDS, show_spinner=False)
+def load_headline_line_metrics() -> pd.DataFrame:
+    """Load the compact line-summary table once for every mode."""
+    return run_query(
+        f"""
+        SELECT
+            scope_mode,
+            focus_service_key,
+            route_display_name,
+            transport_mode,
+            agency_name,
+            unique_stop_events AS stop_events,
+            delay_reported_events AS delay_events,
+            late_events,
+            ROUND(
+                100.0 * delay_reported_events
+                / NULLIF(unique_stop_events, 0), 2
+            ) AS delay_coverage,
+            ROUND(
+                100.0 * late_events
+                / NULLIF(delay_reported_events, 0), 2
+            ) AS late_percentage
+        FROM ROUTEPULSE.ANALYTICS.DASHBOARD_LINE_METRICS
+        WHERE delay_reported_events >= {MIN_RANK_DELAY_EVENTS}
+        """
+    )
+
+
+@st.cache_data(ttl=PRESENTATION_CACHE_TTL_SECONDS, show_spinner=False)
+def load_headline_hour_metrics() -> pd.DataFrame:
+    """Load the compact hourly-summary table once for every mode."""
+    return run_query(
+        f"""
+        SELECT
+            scope_mode,
+            observation_hour_berlin,
+            is_partial_collection_hour,
+            unique_stop_events AS stop_events,
+            delay_reported_events AS delay_events,
+            late_events,
+            ROUND(
+                100.0 * delay_reported_events
+                / NULLIF(unique_stop_events, 0), 2
+            ) AS delay_coverage,
+            ROUND(
+                100.0 * late_events
+                / NULLIF(delay_reported_events, 0), 2
+            ) AS late_percentage
+        FROM ROUTEPULSE.ANALYTICS.DASHBOARD_HOUR_METRICS
+        WHERE delay_reported_events >= {MIN_HEADLINE_HOUR_DELAY_EVENTS}
+        """
+    )
+
+
 window = run_query(
     """
     SELECT
@@ -420,25 +499,14 @@ st.caption(
     f"Showing: {scope_mode_label} · all regions"
 )
 
-event_kpi = run_query(
-    f"""
-    SELECT
-        unique_stop_events AS stop_events,
-        delay_reported_events AS delay_events,
-        late_events,
-        ROUND(
-            100.0 * delay_reported_events
-            / NULLIF(unique_stop_events, 0), 2
-        ) AS delay_coverage,
-        ROUND(
-            100.0 * late_events
-            / NULLIF(delay_reported_events, 0), 2
-        ) AS late_percentage,
-        p90_delay_minutes
-    FROM ROUTEPULSE.ANALYTICS.DASHBOARD_SCOPE_METRICS
-    WHERE scope_mode = {sql_string(selected_mode)}
-    """
-).iloc[0]
+scope_metrics = load_scope_metrics()
+selected_scope_metrics = scope_metrics[
+    scope_metrics["SCOPE_MODE"] == selected_mode
+]
+if selected_scope_metrics.empty:
+    st.error("No dashboard metrics are available for this transport mode.")
+    st.stop()
+event_kpi = selected_scope_metrics.iloc[0]
 
 if int(event_kpi["STOP_EVENTS"]) == 0:
     st.error("No observed stop visits match this transport mode.")
@@ -539,52 +607,22 @@ st.caption(
     "never treated as zero."
 )
 
-line_insights = run_query(
-    f"""
-    SELECT
-        focus_service_key,
-        route_display_name,
-        transport_mode,
-        agency_name,
-        unique_stop_events AS stop_events,
-        delay_reported_events AS delay_events,
-        late_events,
-        ROUND(
-            100.0 * delay_reported_events
-            / NULLIF(unique_stop_events, 0), 2
-        ) AS delay_coverage,
-        ROUND(
-            100.0 * late_events
-            / NULLIF(delay_reported_events, 0), 2
-        ) AS late_percentage
-    FROM ROUTEPULSE.ANALYTICS.DASHBOARD_LINE_METRICS
-    WHERE scope_mode = {sql_string(selected_mode)}
-      AND delay_reported_events >= {MIN_RANK_DELAY_EVENTS}
-    ORDER BY late_percentage DESC, late_events DESC
-    """
+line_insights = (
+    load_headline_line_metrics()
+    .loc[lambda data: data["SCOPE_MODE"] == selected_mode]
+    .sort_values(
+        ["LATE_PERCENTAGE", "LATE_EVENTS"],
+        ascending=[False, False],
+    )
 )
 
-headline_hours = run_query(
-    f"""
-    SELECT
-        observation_hour_berlin,
-        is_partial_collection_hour,
-        unique_stop_events AS stop_events,
-        delay_reported_events AS delay_events,
-        late_events,
-        ROUND(
-            100.0 * delay_reported_events
-            / NULLIF(unique_stop_events, 0), 2
-        ) AS delay_coverage,
-        ROUND(
-            100.0 * late_events
-            / NULLIF(delay_reported_events, 0), 2
-        ) AS late_percentage
-    FROM ROUTEPULSE.ANALYTICS.DASHBOARD_HOUR_METRICS
-    WHERE scope_mode = {sql_string(selected_mode)}
-      AND delay_reported_events >= {MIN_HEADLINE_HOUR_DELAY_EVENTS}
-    ORDER BY late_percentage DESC, delay_events DESC
-    """
+headline_hours = (
+    load_headline_hour_metrics()
+    .loc[lambda data: data["SCOPE_MODE"] == selected_mode]
+    .sort_values(
+        ["LATE_PERCENTAGE", "DELAY_EVENTS"],
+        ascending=[False, False],
+    )
 )
 
 st.subheader("Key findings")
@@ -647,19 +685,11 @@ with st.container(key="view_navigation_shell"):
 st.divider()
 
 
-def render_network_map():
-    st.header("Where do the observed services run?")
-    st.caption(
-        "Scheduled GTFS paths for passenger-facing services observed during "
-        "this sample. Lines show planned routes, not realtime vehicle movements."
-    )
-    mode_predicate = (
-        "catalogue.transport_mode IS NOT NULL"
-        if selected_mode == "All modes"
-        else f"catalogue.transport_mode = {sql_string(selected_mode)}"
-    )
+@st.cache_data(ttl=PRESENTATION_CACHE_TTL_SECONDS, show_spinner=False)
+def load_network_paths() -> pd.DataFrame:
+    """Load and parse all representative network paths once per cache cycle."""
     network_paths = run_query(
-        f"""
+        """
         WITH ranked_paths AS (
             SELECT
                 CONCAT_WS(
@@ -695,7 +725,7 @@ def render_network_map():
             FROM ROUTEPULSE.ANALYTICS.MAP_ROUTE_PATHS_RENDER AS paths
             JOIN ROUTEPULSE.ANALYTICS.ROUTE_GEOGRAPHIC_CATALOG AS catalogue
                 ON paths.route_id = catalogue.static_route_id
-            WHERE {mode_predicate}
+            WHERE catalogue.transport_mode IS NOT NULL
         ),
         termini AS (
             SELECT
@@ -734,31 +764,74 @@ def render_network_map():
         """
     )
     if network_paths.empty:
-        st.info(f"No scheduled map paths are available for {scope_mode_label}.")
-        return
+        return network_paths
 
     network_paths["path"] = network_paths["MAP_PATH_JSON"].map(parse_json_value)
-    network_paths = network_paths[
+    return network_paths[
         network_paths["path"].map(
             lambda path: isinstance(path, list) and len(path) >= 2
         )
     ].copy()
-    if network_paths.empty:
-        st.info(f"No drawable scheduled paths are available for {scope_mode_label}.")
-        return
 
-    if selected_mode == "All modes":
+
+@st.cache_data(ttl=PRESENTATION_CACHE_TTL_SECONDS, show_spinner=False)
+def load_state_boundary_features() -> dict:
+    """Return the simplified Berlin and Brandenburg boundaries once."""
+    boundaries = run_query(
+        """
+        SELECT
+            state_name,
+            ST_ASGEOJSON(
+                ST_SIMPLIFY(boundary_geography, 100, TRUE)
+            )::VARCHAR AS boundary_geojson
+        FROM ROUTEPULSE.ANALYTICS.STATE_BOUNDARIES
+        WHERE state_name IN ('Berlin', 'Brandenburg')
+        ORDER BY state_name
+        """
+    )
+    features = []
+    for _, boundary in boundaries.iterrows():
+        geometry = parse_json_value(boundary["BOUNDARY_GEOJSON"])
+        if geometry:
+            features.append(
+                {
+                    "type": "Feature",
+                    "properties": {"state_name": boundary["STATE_NAME"]},
+                    "geometry": geometry,
+                }
+            )
+    return {"type": "FeatureCollection", "features": features}
+
+
+@st.cache_data(ttl=PRESENTATION_CACHE_TTL_SECONDS, show_spinner=False)
+def prepare_network_map_data(mode: str) -> tuple[pd.DataFrame, int, int]:
+    """Filter and style cached paths without another Snowflake round trip."""
+    network_paths = load_network_paths()
+    if mode != "All modes":
+        network_paths = network_paths[
+            network_paths["TRANSPORT_MODE"] == mode
+        ].copy()
+    else:
+        network_paths = network_paths.copy()
+    if network_paths.empty:
+        return network_paths, 0, 0
+
+    if mode == "All modes":
         network_paths["color"] = network_paths["TRANSPORT_MODE"].map(
-            lambda mode: rgba(MODE_COLORS.get(mode, COVERAGE_BAR_COLOR), 215)
+            lambda transport_mode: rgba(
+                MODE_COLORS.get(transport_mode, COVERAGE_BAR_COLOR), 215
+            )
         )
-    elif selected_mode == "Bus":
+    elif mode == "Bus":
         network_paths["color"] = [rgba(MODE_COLORS["Bus"], 215)] * len(
             network_paths
         )
     else:
         service_keys = sorted(network_paths["FOCUS_SERVICE_KEY"].unique())
         service_colors = {
-            key: rgba(NETWORK_LINE_PALETTE[index % len(NETWORK_LINE_PALETTE)], 220)
+            key: rgba(
+                NETWORK_LINE_PALETTE[index % len(NETWORK_LINE_PALETTE)], 220
+            )
             for index, key in enumerate(service_keys)
         }
         network_paths["color"] = network_paths["FOCUS_SERVICE_KEY"].map(
@@ -775,37 +848,32 @@ def render_network_map():
         }
     ).copy()
     map_data["termini"] = map_data["termini"].fillna("Termini unavailable")
-
-    boundaries = run_query(
-        """
-        SELECT
-            state_name,
-            ST_ASGEOJSON(
-                ST_SIMPLIFY(boundary_geography, 100, TRUE)
-            )::VARCHAR AS boundary_geojson
-        FROM ROUTEPULSE.ANALYTICS.STATE_BOUNDARIES
-        WHERE state_name IN ('Berlin', 'Brandenburg')
-        ORDER BY state_name
-        """
+    return (
+        map_data,
+        int(network_paths["FOCUS_SERVICE_KEY"].nunique()),
+        int(network_paths["MAP_POINT_COUNT"].fillna(0).sum()),
     )
-    boundary_features = []
-    for _, boundary in boundaries.iterrows():
-        geometry = parse_json_value(boundary["BOUNDARY_GEOJSON"])
-        if geometry:
-            boundary_features.append(
-                {
-                    "type": "Feature",
-                    "properties": {"state_name": boundary["STATE_NAME"]},
-                    "geometry": geometry,
-                }
-            )
+
+
+def render_network_map():
+    st.header("Where do the observed services run?")
+    st.caption(
+        "Scheduled GTFS paths for passenger-facing services observed during "
+        "this sample. Lines show planned routes, not realtime vehicle movements."
+    )
+    map_data, line_count, coordinate_count = prepare_network_map_data(selected_mode)
+    if map_data.empty:
+        st.info(f"No scheduled map paths are available for {scope_mode_label}.")
+        return
+
+    boundary_geojson = load_state_boundary_features()
 
     layers = []
-    if boundary_features:
+    if boundary_geojson["features"]:
         layers.append(
             pdk.Layer(
                 "GeoJsonLayer",
-                data={"type": "FeatureCollection", "features": boundary_features},
+                data=boundary_geojson,
                 id="state-boundaries",
                 stroked=True,
                 filled=True,
@@ -851,11 +919,9 @@ def render_network_map():
         height=700,
     )
 
-    line_count = int(network_paths["FOCUS_SERVICE_KEY"].nunique())
-    coordinate_count = int(network_paths["MAP_POINT_COUNT"].fillna(0).sum())
     metric_columns = st.columns(3)
     metric_columns[0].metric("Passenger-facing lines", f"{line_count:,}")
-    metric_columns[1].metric("Representative paths", f"{len(network_paths):,}")
+    metric_columns[1].metric("Representative paths", f"{len(map_data):,}")
     metric_columns[2].metric("Rendered coordinates", f"{coordinate_count:,}")
     if selected_mode == "All modes":
         legend = " &nbsp; ".join(
