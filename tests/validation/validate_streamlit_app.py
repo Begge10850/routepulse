@@ -90,7 +90,7 @@ def main():
     assert source.index('"Observed stop area"') < source.index('"Transport mode"'), (
         "Observed stop area must appear before Transport mode in the sidebar"
     )
-    require(source, ".block-container { padding-top: 3.5rem !important; }")
+    require(source, ".block-container { padding-top: 5rem !important; }")
 
     for stale in (
         "Map mode",

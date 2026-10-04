@@ -677,7 +677,7 @@ one_in_text = (
 st.markdown(
     """
     <style>
-    .block-container { padding-top: 3.5rem !important; }
+    .block-container { padding-top: 5rem !important; }
     .rp-card-grid {
         display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
