@@ -186,47 +186,42 @@ def timing_distribution_frame(event_kpi: pd.Series) -> pd.DataFrame:
 
 
 def render_timing_distribution(event_kpi: pd.Series):
-    """Render a compact schedule-position profile for the active dashboard scope."""
+    """Render a labelled schedule-position profile for the active dashboard scope."""
     timing = timing_distribution_frame(event_kpi)
-    category_order = list(TIMING_CATEGORY_COLORS)
-    timing["category_order"] = timing["Timing category"].map(
-        {label: index for index, label in enumerate(category_order)}
-    )
-    chart = (
-        alt.Chart(timing)
-        .mark_bar(cornerRadius=4)
-        .encode(
-            x=alt.X(
-                "Share of timed visits:Q",
-                stack="normalize",
-                axis=alt.Axis(format="%", title=None, tickCount=5),
-            ),
-            color=alt.Color(
-                "Timing category:N",
-                scale=alt.Scale(
-                    domain=category_order,
-                    range=[TIMING_CATEGORY_COLORS[item] for item in category_order],
-                ),
-                legend=alt.Legend(orient="bottom", title=None),
-            ),
-            order=alt.Order(
-                "category_order:Q",
-                sort="ascending",
-            ),
-            tooltip=[
-                alt.Tooltip("Timing category:N", title="Timing category"),
-                alt.Tooltip("Stop visits:Q", title="Stop visits", format=","),
-                alt.Tooltip(
-                    "Share of timed visits:Q",
-                    title="Share of timed visits (%)",
-                    format=".2f",
-                ),
-                alt.Tooltip("Timing population:N", title="Denominator"),
-            ],
+    segments = "".join(
+        (
+            '<div class="rp-timing-segment" '
+            f'style="width:{float(row["Share of timed visits"]):.6f}%;'
+            f'background:{html.escape(str(row["Colour"]))}" '
+            f'title="{html.escape(str(row["Timing category"]))}: '
+            f"{float(row['Share of timed visits']):.1f}% "
+            f'({int(row["Stop visits"]):,} visits)"></div>'
         )
-        .properties(height=54)
+        for _, row in timing.iterrows()
     )
-    st.altair_chart(chart, width="stretch")
+    result_items = "".join(
+        (
+            '<div class="rp-timing-item">'
+            '<div class="rp-timing-label">'
+            f'<span style="background:{html.escape(str(row["Colour"]))}"></span>'
+            f"{html.escape(str(row['Timing category']))}</div>"
+            f'<div class="rp-timing-value">{float(row["Share of timed visits"]):.1f}%</div>'
+            f'<div class="rp-timing-count">{int(row["Stop visits"]):,} timed visits</div>'
+            "</div>"
+        )
+        for _, row in timing.iterrows()
+    )
+    st.markdown(
+        f"""
+        <div class="rp-timing-stack" aria-label="Timing-category distribution">
+          {segments}
+        </div>
+        <div class="rp-timing-grid">
+          {result_items}
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 
 def choose_segment(
@@ -830,6 +825,48 @@ st.markdown(
     .rp-card-label { color: #94A3B8; font-size: 0.82rem; margin-top: 0.45rem; }
     .rp-card-value { color: #F8FAFC; font-size: 2.15rem; font-weight: 650; line-height: 1.05; margin: 0.18rem 0; }
     .rp-card-copy { color: #CBD5E1; font-size: 0.84rem; line-height: 1.35; }
+    .rp-timing-stack {
+        display: flex;
+        width: 100%;
+        height: 20px;
+        overflow: hidden;
+        border-radius: 8px;
+        margin: 0.55rem 0 0.7rem 0;
+        background: rgba(100, 116, 139, 0.20);
+    }
+    .rp-timing-segment { min-width: 2px; height: 100%; }
+    .rp-timing-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 0.65rem;
+        margin-bottom: 0.65rem;
+    }
+    .rp-timing-item {
+        border: 1px solid rgba(148, 163, 184, 0.24);
+        border-radius: 12px;
+        padding: 0.65rem 0.75rem;
+        background: rgba(15, 23, 42, 0.40);
+    }
+    .rp-timing-label {
+        color: #CBD5E1;
+        font-size: 0.78rem;
+        line-height: 1.25;
+        min-height: 2rem;
+    }
+    .rp-timing-label span {
+        display: inline-block;
+        width: 0.65rem;
+        height: 0.65rem;
+        border-radius: 50%;
+        margin-right: 0.35rem;
+    }
+    .rp-timing-value {
+        color: #F8FAFC;
+        font-size: 1.35rem;
+        font-weight: 650;
+        margin-top: 0.15rem;
+    }
+    .rp-timing-count { color: #94A3B8; font-size: 0.75rem; }
     .rp-build-strip {
         border: 1px solid rgba(96, 165, 250, 0.32);
         border-radius: 12px;
@@ -840,6 +877,7 @@ st.markdown(
     }
     @media (max-width: 760px) {
         .rp-card-grid { grid-template-columns: 1fr; }
+        .rp-timing-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
     </style>
     """,
