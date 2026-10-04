@@ -37,14 +37,19 @@ def main():
         "PRESENTATION_CACHE_TTL_SECONDS = 3600",
         'initial_sidebar_state="expanded"',
         "with st.sidebar:",
+        'AREA_OPTIONS = ["All regions", "Berlin", "Brandenburg"]',
+        '"Observed stop area"',
         "def load_scope_metrics()",
         "def load_headline_line_metrics()",
         "def load_headline_hour_metrics()",
         "def load_station_metrics()",
-        "def prepare_station_ranking(scope_mode: str, station_region: str)",
+        "def prepare_station_ranking(scope_mode: str, scope_region: str)",
+        "def load_category_metrics()",
+        "def load_region_metrics()",
         "def load_network_paths()",
         "def load_state_boundary_features()",
-        "def prepare_network_map_data(mode: str)",
+        "def prepare_network_map_data(",
+        "scope_region: str,",
         "map_data, line_count, coordinate_count = prepare_network_map_data(",
         "at or below this level",
         "Unmatched/unknown",
@@ -104,8 +109,8 @@ def main():
     ):
         forbid(source, stale)
 
-    assert source.count("selected_view ==") == 6
-    assert "GROUP BY observation_hour_berlin" in models
+    assert source.count("selected_view ==") == 5
+    assert "GROUP BY scope_region, observation_hour_berlin" in models
     assert "scope_metric_events = source_events" in models
     assert "COUNT(*) = 1755847" in models
 
