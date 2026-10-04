@@ -837,7 +837,7 @@ st.markdown(
     .rp-timing-segment { min-width: 2px; height: 100%; }
     .rp-timing-grid {
         display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
         gap: 0.65rem;
         margin-bottom: 0.65rem;
     }
