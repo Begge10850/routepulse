@@ -40,3 +40,13 @@ measure.
 
 The remaining release evidence is the public-app smoke test after the commit is
 deployed by Streamlit Community Cloud.
+
+## Public-app smoke test
+
+The first deployment displayed the new timing distribution and stakeholder
+wording correctly. Area and mode filters switched to Brandenburg bus results,
+the station view loaded, and the data-quality view reconciled 289,860 selected
+stop visits. Browser inspection exposed a Deck.gl error in the redundant
+top-three station-name text layer. That layer was removed while retaining the
+numbered map markers, ranking labels and hover tooltips; the follow-up deployment
+must be checked for a clean station-map render.

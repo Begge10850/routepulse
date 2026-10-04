@@ -1335,8 +1335,8 @@ def render_stations():
     with map_column:
         st.subheader("Where are these stations?")
         st.caption(
-            "Numbers match the ranking; the top three station names are shown. "
-            "Larger circles had more visits with timing information."
+            "Numbers match the ranking; hover a circle for its station name and "
+            "timing breakdown. Larger circles had more timed visits."
         )
         if mapped_stations.empty:
             st.info("Coordinates are unavailable for the ranked stations.")
@@ -1396,26 +1396,11 @@ def render_stations():
                 billboard=True,
                 pickable=False,
             )
-            top_station_labels = station_points.nsmallest(3, "station_rank")
-            name_layer = pdk.Layer(
-                "TextLayer",
-                data=top_station_labels,
-                id="top-ranked-station-names",
-                get_position="[station_lon, station_lat]",
-                get_text="station_name",
-                get_color=[241, 245, 249, 255],
-                get_size=12,
-                get_pixel_offset=[0, -20],
-                get_text_anchor="middle",
-                get_alignment_baseline="bottom",
-                billboard=True,
-                pickable=False,
-            )
             st.pydeck_chart(
                 pdk.Deck(
                     map_style=None,
                     initial_view_state=view_state_from_points(station_points),
-                    layers=[station_layer, rank_layer, name_layer],
+                    layers=[station_layer, rank_layer],
                     tooltip={
                         "html": (
                             "<b>{station_name}</b><br/>"
