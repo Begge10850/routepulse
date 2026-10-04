@@ -595,12 +595,6 @@ with st.sidebar:
         "Change the analysis here. Collapse this panel when you want more "
         "room for charts and maps."
     )
-    selected_mode = st.selectbox(
-        "Transport mode",
-        MODE_OPTIONS,
-        index=0,
-        key="mode_filter_v5",
-    )
     selected_area = st.selectbox(
         "Observed stop area",
         AREA_OPTIONS,
@@ -610,6 +604,12 @@ with st.sidebar:
             "Berlin and Brandenburg are assigned from each observed stop's "
             "location. Cross-border lines can appear in both areas."
         ),
+    )
+    selected_mode = st.selectbox(
+        "Transport mode",
+        MODE_OPTIONS,
+        index=0,
+        key="mode_filter_v5",
     )
     selected_view = st.radio(
         "Analysis",
@@ -677,7 +677,7 @@ one_in_text = (
 st.markdown(
     """
     <style>
-    .block-container { padding-top: 1rem; }
+    .block-container { padding-top: 3.5rem !important; }
     .rp-card-grid {
         display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
