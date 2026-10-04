@@ -86,13 +86,16 @@ observational wording from earlier versions.
 1. Confirm that `09_unique_stop_events.sql`,
    `10_geographic_event_enrichment.sql` and `11_line_focus_models.sql` have
    already completed successfully.
-2. Run `12_dashboard_ui_models.sql` in Snowflake. Review all four validation
-   result sets before updating the app.
-3. Add `environment.yml` to the Streamlit application files so the warehouse
+2. Run `12_dashboard_ui_models.sql` in Snowflake. Review all validation result
+   sets before updating the app.
+3. Run `15_validate_timing_categories.sql`. Every mismatch count must be zero,
+   every `ALL_ROWS_RECONCILE` value must be `TRUE`, and
+   `SERIOUS_DELAY_COUNT_MATCHES` must be `TRUE`.
+4. Add `environment.yml` to the Streamlit application files so the warehouse
    runtime uses Streamlit 1.52.2.
-4. Replace the deployed app's `streamlit_app.py` contents with
+5. Replace the deployed app's `streamlit_app.py` contents with
    `streamlit_app_v4.py`.
-5. Relaunch the app and complete the smoke checks below.
+6. Relaunch the app and complete the smoke checks below.
 
 Do not replace the existing deployed app until step 2 finishes successfully.
 The v4 application expects the `DASHBOARD_*` transient tables created by that

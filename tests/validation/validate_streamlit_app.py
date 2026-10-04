@@ -7,6 +7,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE_PATH = ROOT / "app" / "streamlit_app.py"
 MODEL_PATH = ROOT / "sql" / "12_dashboard_ui_models.sql"
+TIMING_VALIDATION_PATH = ROOT / "sql" / "15_validate_timing_categories.sql"
+TIMING_METHOD_PATH = ROOT / "docs" / "timing_methodology.md"
 
 
 def require(source: str, text: str):
@@ -20,6 +22,8 @@ def forbid(source: str, text: str):
 def main():
     source = SOURCE_PATH.read_text(encoding="utf-8")
     models = MODEL_PATH.read_text(encoding="utf-8")
+    timing_validation = TIMING_VALIDATION_PATH.read_text(encoding="utf-8")
+    timing_method = TIMING_METHOD_PATH.read_text(encoding="utf-8")
     ast.parse(source)
 
     for required in (
@@ -51,11 +55,18 @@ def main():
         "def prepare_network_map_data(",
         "scope_region: str,",
         "map_data, line_count, coordinate_count = prepare_network_map_data(",
-        "at or below this level",
+        "9 in 10 timing reports were no more delayed than this",
         "Unmatched/unknown",
         "Outside Berlin-Brandenburg",
         "Scheduled GTFS paths for passenger-facing services observed during",
-        "as more than 5 minutes behind the timetable.** Missing delay figures",
+        "reported as more than 5 minutes behind the timetable.** Missing timing values",
+        "How did the timed visits compare with the schedule?",
+        "How RoutePulse defines early, near schedule and late",
+        "Reported >1 min early",
+        "Within 1 min of schedule",
+        "1–5 min late",
+        ">5 min late",
+        "Timing-data availability",
         "Which stations were late most often?",
         "Stations with the most frequent serious delays",
         "Where are these stations?",
@@ -64,11 +75,11 @@ def main():
         "Which lines were reported late most often?",
         "Which transport modes were late most often?",
         "above to compare its individual lines.",
-        "Most often late",
-        "Most late stop visits",
+        "Highest serious-delay share",
+        "Largest number of serious delays",
         "See where a line runs",
-        "The strongest well-supported high-rate signal",
-        "How complete is our delay data?",
+        "The strongest well-supported serious-delay share",
+        "How complete is our timing data?",
         "Very complete (>90%)",
         "Mostly complete (75–90%)",
         "Partial (<75%)",
@@ -82,7 +93,7 @@ def main():
         "MAP_ROUTE_PATHS_RENDER",
         "STATE_BOUNDARIES",
         'selected_view == "Network map"',
-        "selected_view == \"Stations\"",
+        'selected_view == "Stations"',
         "height=700",
     ):
         require(source, required)
@@ -110,7 +121,7 @@ def main():
         "Station delay-rate ranking",
         "Location of the ranked stations",
         "def render_line_scatter",
-        "MODE_LABEL\"] = mode_data.apply",
+        'MODE_LABEL"] = mode_data.apply',
     ):
         forbid(source, stale)
 
@@ -118,6 +129,34 @@ def main():
     assert "GROUP BY scope_region, observation_hour_berlin" in models
     assert "scope_metric_events = source_events" in models
     assert "COUNT(*) = 1755847" in models
+    assert models.count("AS early_events") == 11
+    assert models.count("AS near_schedule_events") == 11
+    assert models.count("AS minor_delay_events") == 11
+    assert models.count("AS timing_unavailable_events") == 11
+    for reconciliation_contract in (
+        "timing_category_mismatches",
+        "availability_mismatches",
+        "all_rows_reconcile",
+        "serious_delay_count_matches",
+    ):
+        require(models + timing_validation, reconciliation_contract)
+    for methodology_contract in (
+        "reported_delay_seconds < -60",
+        "reported_delay_seconds BETWEEN -60 AND 60",
+        "reported_delay_seconds > 60 AND reported_delay_seconds <= 300",
+        "reported_delay_seconds > 300",
+        "Predictions, not confirmed outcomes",
+        "Interview-ready explanation",
+    ):
+        require(timing_method, methodology_contract)
+
+    for stale_wording in (
+        "delay figure",
+        "Delay-data availability",
+        "Highest observed line rate",
+        "Highest observed line volume",
+    ):
+        forbid(source, stale_wording)
 
     referenced_dashboard_tables = set(
         re.findall(r"ROUTEPULSE\.ANALYTICS\.(DASHBOARD_[A-Z_]+)", source)

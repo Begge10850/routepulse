@@ -61,6 +61,9 @@ The preservation boundary is documented in
 Reproducible setup, collection, testing, conversion, upload and deployment
 commands are retained in
 [`docs/reproduction_commands.md`](docs/reproduction_commands.md).
+The signed timing field, early/on-schedule/late categories, denominators,
+five-minute threshold and P90 interpretation are documented in
+[`docs/timing_methodology.md`](docs/timing_methodology.md).
 
 ## Development setup
 

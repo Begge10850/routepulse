@@ -184,6 +184,8 @@ sql/10_geographic_event_enrichment.sql
 sql/11_line_focus_models.sql
 sql/12_dashboard_ui_models.sql
 sql/13_community_cloud_access.sql
+sql/14_validate_regional_filters.sql
+sql/15_validate_timing_categories.sql
 ```
 
 Before running stage 02, replace `<AWS_ACCOUNT_ID>` with the account that owns

@@ -8,6 +8,13 @@ USE SCHEMA ANALYTICS;
 -- These tables preserve additive numerators and denominators. The Streamlit
 -- app calculates and displays rates from the counts stored at the grain needed
 -- by each view; it never averages percentages across groups.
+--
+-- Timing categories are mutually exclusive and collectively exhaustive:
+--   early:                 reported_delay_seconds < -60
+--   near schedule:        -60 through 60 seconds inclusive
+--   minor delay:           more than 60 through 300 seconds inclusive
+--   serious delay:         more than 300 seconds
+--   timing unavailable:    reported_delay_seconds IS NULL
 
 CREATE OR REPLACE TRANSIENT TABLE DASHBOARD_SCOPE_METRICS AS
 WITH scoped_events AS (
@@ -24,7 +31,14 @@ by_mode AS (
         scope_region,
         COUNT(*) AS unique_stop_events,
         COUNT_IF(reported_delay_seconds IS NOT NULL) AS delay_reported_events,
+        COUNT_IF(reported_delay_seconds < -60) AS early_events,
+        COUNT_IF(reported_delay_seconds BETWEEN -60 AND 60) AS near_schedule_events,
+        COUNT_IF(
+            reported_delay_seconds > 60
+            AND reported_delay_seconds <= 300
+        ) AS minor_delay_events,
         COUNT_IF(reported_delay_seconds > 300) AS late_events,
+        COUNT_IF(reported_delay_seconds IS NULL) AS timing_unavailable_events,
         ROUND(
             PERCENTILE_CONT(0.90) WITHIN GROUP (
                 ORDER BY reported_delay_seconds
@@ -41,7 +55,14 @@ all_modes AS (
         scope_region,
         COUNT(*) AS unique_stop_events,
         COUNT_IF(reported_delay_seconds IS NOT NULL) AS delay_reported_events,
+        COUNT_IF(reported_delay_seconds < -60) AS early_events,
+        COUNT_IF(reported_delay_seconds BETWEEN -60 AND 60) AS near_schedule_events,
+        COUNT_IF(
+            reported_delay_seconds > 60
+            AND reported_delay_seconds <= 300
+        ) AS minor_delay_events,
         COUNT_IF(reported_delay_seconds > 300) AS late_events,
+        COUNT_IF(reported_delay_seconds IS NULL) AS timing_unavailable_events,
         ROUND(
             PERCENTILE_CONT(0.90) WITHIN GROUP (
                 ORDER BY reported_delay_seconds
@@ -74,7 +95,14 @@ by_mode AS (
         AVG(station_lon) AS station_lon,
         COUNT(*) AS unique_stop_events,
         COUNT_IF(reported_delay_seconds IS NOT NULL) AS delay_reported_events,
-        COUNT_IF(reported_delay_seconds > 300) AS late_events
+        COUNT_IF(reported_delay_seconds < -60) AS early_events,
+        COUNT_IF(reported_delay_seconds BETWEEN -60 AND 60) AS near_schedule_events,
+        COUNT_IF(
+            reported_delay_seconds > 60
+            AND reported_delay_seconds <= 300
+        ) AS minor_delay_events,
+        COUNT_IF(reported_delay_seconds > 300) AS late_events,
+        COUNT_IF(reported_delay_seconds IS NULL) AS timing_unavailable_events
     FROM scoped_events
     WHERE station_display_name IS NOT NULL
       AND transport_mode IS NOT NULL
@@ -89,7 +117,14 @@ all_modes AS (
         AVG(station_lon) AS station_lon,
         COUNT(*) AS unique_stop_events,
         COUNT_IF(reported_delay_seconds IS NOT NULL) AS delay_reported_events,
-        COUNT_IF(reported_delay_seconds > 300) AS late_events
+        COUNT_IF(reported_delay_seconds < -60) AS early_events,
+        COUNT_IF(reported_delay_seconds BETWEEN -60 AND 60) AS near_schedule_events,
+        COUNT_IF(
+            reported_delay_seconds > 60
+            AND reported_delay_seconds <= 300
+        ) AS minor_delay_events,
+        COUNT_IF(reported_delay_seconds > 300) AS late_events,
+        COUNT_IF(reported_delay_seconds IS NULL) AS timing_unavailable_events
     FROM scoped_events
     WHERE station_display_name IS NOT NULL
     GROUP BY scope_region, station_display_name
@@ -119,7 +154,14 @@ by_mode AS (
         agency_name,
         COUNT(*) AS unique_stop_events,
         COUNT_IF(reported_delay_seconds IS NOT NULL) AS delay_reported_events,
-        COUNT_IF(reported_delay_seconds > 300) AS late_events
+        COUNT_IF(reported_delay_seconds < -60) AS early_events,
+        COUNT_IF(reported_delay_seconds BETWEEN -60 AND 60) AS near_schedule_events,
+        COUNT_IF(
+            reported_delay_seconds > 60
+            AND reported_delay_seconds <= 300
+        ) AS minor_delay_events,
+        COUNT_IF(reported_delay_seconds > 300) AS late_events,
+        COUNT_IF(reported_delay_seconds IS NULL) AS timing_unavailable_events
     FROM scoped_events
     WHERE focus_service_key IS NOT NULL
       AND transport_mode IS NOT NULL
@@ -142,7 +184,14 @@ all_modes AS (
         agency_name,
         COUNT(*) AS unique_stop_events,
         COUNT_IF(reported_delay_seconds IS NOT NULL) AS delay_reported_events,
-        COUNT_IF(reported_delay_seconds > 300) AS late_events
+        COUNT_IF(reported_delay_seconds < -60) AS early_events,
+        COUNT_IF(reported_delay_seconds BETWEEN -60 AND 60) AS near_schedule_events,
+        COUNT_IF(
+            reported_delay_seconds > 60
+            AND reported_delay_seconds <= 300
+        ) AS minor_delay_events,
+        COUNT_IF(reported_delay_seconds > 300) AS late_events,
+        COUNT_IF(reported_delay_seconds IS NULL) AS timing_unavailable_events
     FROM scoped_events
     WHERE focus_service_key IS NOT NULL
     GROUP BY
@@ -175,7 +224,14 @@ by_mode AS (
         is_partial_collection_hour,
         COUNT(*) AS unique_stop_events,
         COUNT_IF(reported_delay_seconds IS NOT NULL) AS delay_reported_events,
+        COUNT_IF(reported_delay_seconds < -60) AS early_events,
+        COUNT_IF(reported_delay_seconds BETWEEN -60 AND 60) AS near_schedule_events,
+        COUNT_IF(
+            reported_delay_seconds > 60
+            AND reported_delay_seconds <= 300
+        ) AS minor_delay_events,
         COUNT_IF(reported_delay_seconds > 300) AS late_events,
+        COUNT_IF(reported_delay_seconds IS NULL) AS timing_unavailable_events,
         ROUND(
             PERCENTILE_CONT(0.90) WITHIN GROUP (
                 ORDER BY reported_delay_seconds
@@ -198,7 +254,14 @@ all_modes AS (
         is_partial_collection_hour,
         COUNT(*) AS unique_stop_events,
         COUNT_IF(reported_delay_seconds IS NOT NULL) AS delay_reported_events,
+        COUNT_IF(reported_delay_seconds < -60) AS early_events,
+        COUNT_IF(reported_delay_seconds BETWEEN -60 AND 60) AS near_schedule_events,
+        COUNT_IF(
+            reported_delay_seconds > 60
+            AND reported_delay_seconds <= 300
+        ) AS minor_delay_events,
         COUNT_IF(reported_delay_seconds > 300) AS late_events,
+        COUNT_IF(reported_delay_seconds IS NULL) AS timing_unavailable_events,
         ROUND(
             PERCENTILE_CONT(0.90) WITHIN GROUP (
                 ORDER BY reported_delay_seconds
@@ -220,7 +283,14 @@ WITH by_mode AS (
         event_region,
         COUNT(*) AS unique_stop_events,
         COUNT_IF(reported_delay_seconds IS NOT NULL) AS delay_reported_events,
-        COUNT_IF(reported_delay_seconds > 300) AS late_events
+        COUNT_IF(reported_delay_seconds < -60) AS early_events,
+        COUNT_IF(reported_delay_seconds BETWEEN -60 AND 60) AS near_schedule_events,
+        COUNT_IF(
+            reported_delay_seconds > 60
+            AND reported_delay_seconds <= 300
+        ) AS minor_delay_events,
+        COUNT_IF(reported_delay_seconds > 300) AS late_events,
+        COUNT_IF(reported_delay_seconds IS NULL) AS timing_unavailable_events
     FROM STOP_EVENTS_GEOGRAPHIC
     WHERE transport_mode IS NOT NULL
     GROUP BY transport_mode, event_region
@@ -231,7 +301,14 @@ all_modes AS (
         event_region,
         COUNT(*) AS unique_stop_events,
         COUNT_IF(reported_delay_seconds IS NOT NULL) AS delay_reported_events,
-        COUNT_IF(reported_delay_seconds > 300) AS late_events
+        COUNT_IF(reported_delay_seconds < -60) AS early_events,
+        COUNT_IF(reported_delay_seconds BETWEEN -60 AND 60) AS near_schedule_events,
+        COUNT_IF(
+            reported_delay_seconds > 60
+            AND reported_delay_seconds <= 300
+        ) AS minor_delay_events,
+        COUNT_IF(reported_delay_seconds > 300) AS late_events,
+        COUNT_IF(reported_delay_seconds IS NULL) AS timing_unavailable_events
     FROM STOP_EVENTS_GEOGRAPHIC
     GROUP BY event_region
 )
@@ -255,7 +332,14 @@ SELECT
     german_service_category,
     COUNT(*) AS unique_stop_events,
     COUNT_IF(reported_delay_seconds IS NOT NULL) AS delay_reported_events,
-    COUNT_IF(reported_delay_seconds > 300) AS late_events
+    COUNT_IF(reported_delay_seconds < -60) AS early_events,
+    COUNT_IF(reported_delay_seconds BETWEEN -60 AND 60) AS near_schedule_events,
+    COUNT_IF(
+        reported_delay_seconds > 60
+        AND reported_delay_seconds <= 300
+    ) AS minor_delay_events,
+    COUNT_IF(reported_delay_seconds > 300) AS late_events,
+    COUNT_IF(reported_delay_seconds IS NULL) AS timing_unavailable_events
 FROM scoped_events
 WHERE transport_mode IN ('Bus', 'Regional rail')
   AND german_service_category IS NOT NULL
@@ -339,3 +423,106 @@ SELECT
     COUNT_IF(event_region = 'Outside Berlin-Brandenburg') AS outside_events,
     COUNT_IF(event_region = 'Unmatched/unknown') AS unmatched_events
 FROM STOP_EVENTS_GEOGRAPHIC;
+
+-- Validation 5: timing categories must reconcile at every aggregate grain.
+WITH validation_rows AS (
+    SELECT
+        'DASHBOARD_SCOPE_METRICS' AS model_name,
+        unique_stop_events,
+        delay_reported_events,
+        early_events,
+        near_schedule_events,
+        minor_delay_events,
+        late_events,
+        timing_unavailable_events
+    FROM DASHBOARD_SCOPE_METRICS
+
+    UNION ALL
+
+    SELECT
+        'DASHBOARD_STATION_METRICS',
+        unique_stop_events,
+        delay_reported_events,
+        early_events,
+        near_schedule_events,
+        minor_delay_events,
+        late_events,
+        timing_unavailable_events
+    FROM DASHBOARD_STATION_METRICS
+
+    UNION ALL
+
+    SELECT
+        'DASHBOARD_LINE_METRICS',
+        unique_stop_events,
+        delay_reported_events,
+        early_events,
+        near_schedule_events,
+        minor_delay_events,
+        late_events,
+        timing_unavailable_events
+    FROM DASHBOARD_LINE_METRICS
+
+    UNION ALL
+
+    SELECT
+        'DASHBOARD_HOUR_METRICS',
+        unique_stop_events,
+        delay_reported_events,
+        early_events,
+        near_schedule_events,
+        minor_delay_events,
+        late_events,
+        timing_unavailable_events
+    FROM DASHBOARD_HOUR_METRICS
+
+    UNION ALL
+
+    SELECT
+        'DASHBOARD_REGION_METRICS',
+        unique_stop_events,
+        delay_reported_events,
+        early_events,
+        near_schedule_events,
+        minor_delay_events,
+        late_events,
+        timing_unavailable_events
+    FROM DASHBOARD_REGION_METRICS
+
+    UNION ALL
+
+    SELECT
+        'DASHBOARD_CATEGORY_METRICS',
+        unique_stop_events,
+        delay_reported_events,
+        early_events,
+        near_schedule_events,
+        minor_delay_events,
+        late_events,
+        timing_unavailable_events
+    FROM DASHBOARD_CATEGORY_METRICS
+),
+validation_summary AS (
+SELECT
+    model_name,
+    COUNT(*) AS aggregate_rows,
+    COUNT_IF(
+        delay_reported_events
+        <> early_events + near_schedule_events + minor_delay_events + late_events
+    ) AS timing_category_mismatches,
+    COUNT_IF(
+        unique_stop_events
+        <> delay_reported_events + timing_unavailable_events
+    ) AS availability_mismatches
+FROM validation_rows
+GROUP BY model_name
+)
+SELECT
+    model_name,
+    aggregate_rows,
+    timing_category_mismatches,
+    availability_mismatches,
+    timing_category_mismatches = 0
+        AND availability_mismatches = 0 AS all_rows_reconcile
+FROM validation_summary
+ORDER BY model_name;

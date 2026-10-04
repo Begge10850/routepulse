@@ -106,11 +106,33 @@ MODE_COLORS = {
 }
 RATE_BAR_COLOR = "#F59E0B"
 COVERAGE_BAR_COLOR = "#64748B"
+TIMING_CATEGORY_COLORS = {
+    "Reported >1 min early": "#38BDF8",
+    "On/near schedule (within 1 min)": "#22C55E",
+    "1–5 min late": "#F59E0B",
+    ">5 min late": "#EF4444",
+}
 NETWORK_LINE_PALETTE = [
-    "#60A5FA", "#F59E0B", "#34D399", "#F472B6", "#A78BFA",
-    "#22D3EE", "#FB7185", "#FACC15", "#4ADE80", "#818CF8",
-    "#2DD4BF", "#FB923C", "#C084FC", "#38BDF8", "#E879F9",
-    "#A3E635", "#F87171", "#14B8A6", "#EAB308", "#8B5CF6",
+    "#60A5FA",
+    "#F59E0B",
+    "#34D399",
+    "#F472B6",
+    "#A78BFA",
+    "#22D3EE",
+    "#FB7185",
+    "#FACC15",
+    "#4ADE80",
+    "#818CF8",
+    "#2DD4BF",
+    "#FB923C",
+    "#C084FC",
+    "#38BDF8",
+    "#E879F9",
+    "#A3E635",
+    "#F87171",
+    "#14B8A6",
+    "#EAB308",
+    "#8B5CF6",
 ]
 REGION_ORDER = [
     "Berlin",
@@ -124,6 +146,87 @@ LOW_COVERAGE_PERCENTAGE = 60.0
 MIN_HEADLINE_HOUR_DELAY_EVENTS = 100
 PRESENTATION_CACHE_TTL_SECONDS = 3600
 VIEW_OPTIONS = ["Network map", "Stations", "Lines", "When", "Data quality"]
+
+
+def service_description(row, include_termini: bool = True) -> str:
+    """Return a stakeholder-readable mode, line and optional route description."""
+    mode = str(row.get("TRANSPORT_MODE", "Service"))
+    mode_label = "Regional-rail" if mode == "Regional rail" else mode
+    description = f"{mode_label} line {row['ROUTE_DISPLAY_NAME']}"
+    termini = row.get("TERMINI")
+    if include_termini and pd.notna(termini):
+        first_direction = str(termini).split(" / ")[0]
+        description += f" ({first_direction})"
+    return description
+
+
+def timing_distribution_frame(event_kpi: pd.Series) -> pd.DataFrame:
+    """Create the four mutually exclusive timing categories for one scope."""
+    timed_visits = int(event_kpi["DELAY_EVENTS"])
+    categories = [
+        ("Reported >1 min early", int(event_kpi["EARLY_EVENTS"])),
+        ("On/near schedule (within 1 min)", int(event_kpi["NEAR_SCHEDULE_EVENTS"])),
+        ("1–5 min late", int(event_kpi["MINOR_DELAY_EVENTS"])),
+        (">5 min late", int(event_kpi["LATE_EVENTS"])),
+    ]
+    return pd.DataFrame(
+        [
+            {
+                "Timing category": label,
+                "Stop visits": count,
+                "Share of timed visits": (
+                    100.0 * count / timed_visits if timed_visits else 0.0
+                ),
+                "Colour": TIMING_CATEGORY_COLORS[label],
+                "Timing population": f"{timed_visits:,} visits with timing information",
+            }
+            for label, count in categories
+        ]
+    )
+
+
+def render_timing_distribution(event_kpi: pd.Series):
+    """Render a compact schedule-position profile for the active dashboard scope."""
+    timing = timing_distribution_frame(event_kpi)
+    category_order = list(TIMING_CATEGORY_COLORS)
+    timing["category_order"] = timing["Timing category"].map(
+        {label: index for index, label in enumerate(category_order)}
+    )
+    chart = (
+        alt.Chart(timing)
+        .mark_bar(cornerRadius=4)
+        .encode(
+            x=alt.X(
+                "Share of timed visits:Q",
+                stack="normalize",
+                axis=alt.Axis(format="%", title=None, tickCount=5),
+            ),
+            color=alt.Color(
+                "Timing category:N",
+                scale=alt.Scale(
+                    domain=category_order,
+                    range=[TIMING_CATEGORY_COLORS[item] for item in category_order],
+                ),
+                legend=alt.Legend(orient="bottom", title=None),
+            ),
+            order=alt.Order(
+                "category_order:Q",
+                sort="ascending",
+            ),
+            tooltip=[
+                alt.Tooltip("Timing category:N", title="Timing category"),
+                alt.Tooltip("Stop visits:Q", title="Stop visits", format=","),
+                alt.Tooltip(
+                    "Share of timed visits:Q",
+                    title="Share of timed visits (%)",
+                    format=".2f",
+                ),
+                alt.Tooltip("Timing population:N", title="Denominator"),
+            ],
+        )
+        .properties(height=54)
+    )
+    st.altair_chart(chart, width="stretch")
 
 
 def choose_segment(
@@ -189,7 +292,7 @@ def add_ranking_labels(
     def display_label(row):
         prefix = f"{int(row.name) + 1}. " if number_items else ""
         sample = (
-            f" · {int(row['DELAY_EVENTS']):,} visits with a delay figure"
+            f" · {int(row['DELAY_EVENTS']):,} timed visits"
             if show_sample_in_label
             else ""
         )
@@ -216,14 +319,16 @@ def add_ranking_labels(
         )
     plot["EVIDENCE_NOTE"] = plot.apply(
         lambda row: (
-            "Early signal: fewer than 300 visits with a delay figure"
-            if int(row["DELAY_EVENTS"]) < LOW_SAMPLE_UPPER
-            else "Larger evidence base"
-        )
-        + (
-            "; fewer than 60% of visits had a delay figure"
-            if float(row["DELAY_COVERAGE"]) < LOW_COVERAGE_PERCENTAGE
-            else ""
+            (
+                "Early signal: fewer than 300 visits with timing information"
+                if int(row["DELAY_EVENTS"]) < LOW_SAMPLE_UPPER
+                else "Larger evidence base"
+            )
+            + (
+                "; fewer than 60% of visits had timing information"
+                if float(row["DELAY_COVERAGE"]) < LOW_COVERAGE_PERCENTAGE
+                else ""
+            )
         ),
         axis=1,
     )
@@ -265,16 +370,23 @@ def ranking_chart(
     tooltip_fields.extend(
         [
             alt.Tooltip("LATE_PERCENTAGE:Q", title="Over 5 min (%)", format=".2f"),
-            alt.Tooltip("LATE_EVENTS:Q", title="Late stop visits", format=","),
+            alt.Tooltip("EARLY_EVENTS:Q", title=">1 min early", format=","),
+            alt.Tooltip(
+                "NEAR_SCHEDULE_EVENTS:Q",
+                title="Within 1 min of schedule",
+                format=",",
+            ),
+            alt.Tooltip("MINOR_DELAY_EVENTS:Q", title="1–5 min late", format=","),
+            alt.Tooltip("LATE_EVENTS:Q", title=">5 min late", format=","),
             alt.Tooltip(
                 "DELAY_EVENTS:Q",
-                title="Stop visits with a delay figure",
+                title="Visits with timing information",
                 format=",",
             ),
             alt.Tooltip("STOP_EVENTS:Q", title="Observed stop visits", format=","),
             alt.Tooltip(
                 "DELAY_COVERAGE:Q",
-                title="Visits with a delay figure (%)",
+                title="Timing-data availability (%)",
                 format=".2f",
             ),
             alt.Tooltip("EVIDENCE_NOTE:N", title="Evidence note"),
@@ -292,7 +404,7 @@ def ranking_chart(
             ),
             x=alt.X(
                 "LATE_PERCENTAGE:Q",
-                title="Visits with a delay figure reported over 5 minutes late (%)",
+                title="Timed visits reported over 5 minutes late (%)",
                 scale=alt.Scale(domain=[0, maximum * 1.22]),
             ),
             opacity=(
@@ -329,7 +441,9 @@ def ranking_chart(
             .encode(
                 x="scope_average:Q",
                 tooltip=[
-                    alt.Tooltip("scope_average:Q", title="Scope average (%)", format=".2f")
+                    alt.Tooltip(
+                        "scope_average:Q", title="Scope average (%)", format=".2f"
+                    )
                 ],
             )
         )
@@ -385,7 +499,11 @@ def load_scope_metrics() -> pd.DataFrame:
             scope_region,
             unique_stop_events AS stop_events,
             delay_reported_events AS delay_events,
+            early_events,
+            near_schedule_events,
+            minor_delay_events,
             late_events,
+            timing_unavailable_events,
             ROUND(
                 100.0 * delay_reported_events
                 / NULLIF(unique_stop_events, 0), 2
@@ -415,7 +533,11 @@ def load_headline_line_metrics() -> pd.DataFrame:
             agency_name,
             unique_stop_events AS stop_events,
             delay_reported_events AS delay_events,
+            early_events,
+            near_schedule_events,
+            minor_delay_events,
             late_events,
+            timing_unavailable_events,
             ROUND(
                 100.0 * delay_reported_events
                 / NULLIF(unique_stop_events, 0), 2
@@ -452,7 +574,11 @@ def load_headline_hour_metrics() -> pd.DataFrame:
             is_partial_collection_hour,
             unique_stop_events AS stop_events,
             delay_reported_events AS delay_events,
+            early_events,
+            near_schedule_events,
+            minor_delay_events,
             late_events,
+            timing_unavailable_events,
             ROUND(
                 100.0 * delay_reported_events
                 / NULLIF(unique_stop_events, 0), 2
@@ -480,7 +606,11 @@ def load_station_metrics() -> pd.DataFrame:
             stations.station_lon,
             stations.unique_stop_events AS stop_events,
             stations.delay_reported_events AS delay_events,
+            stations.early_events,
+            stations.near_schedule_events,
+            stations.minor_delay_events,
             stations.late_events,
+            stations.timing_unavailable_events,
             ROUND(
                 100.0 * stations.delay_reported_events
                 / NULLIF(stations.unique_stop_events, 0), 2
@@ -530,7 +660,11 @@ def load_category_metrics() -> pd.DataFrame:
             german_service_category,
             unique_stop_events AS stop_events,
             delay_reported_events AS delay_events,
+            early_events,
+            near_schedule_events,
+            minor_delay_events,
             late_events,
+            timing_unavailable_events,
             ROUND(
                 100.0 * delay_reported_events
                 / NULLIF(unique_stop_events, 0), 2
@@ -553,12 +687,16 @@ def load_region_metrics() -> pd.DataFrame:
             scope_mode,
             event_region,
             unique_stop_events,
-            delay_reported_events AS events_with_delay_data,
+            delay_reported_events AS events_with_timing_data,
+            early_events,
+            near_schedule_events,
+            minor_delay_events,
             late_events,
+            timing_unavailable_events,
             ROUND(
                 100.0 * delay_reported_events
                 / NULLIF(unique_stop_events, 0), 2
-            ) AS delay_data_availability,
+            ) AS timing_data_availability,
             ROUND(
                 100.0 * late_events
                 / NULLIF(delay_reported_events, 0), 2
@@ -585,9 +723,7 @@ window = run_query(
     FROM ROUTEPULSE.ANALYTICS.STOP_EVENTS_GEOGRAPHIC
     """
 ).iloc[0]
-raw_kpi = run_query(
-    "SELECT * FROM ROUTEPULSE.ANALYTICS.KPI_SUMMARY"
-).iloc[0]
+raw_kpi = run_query("SELECT * FROM ROUTEPULSE.ANALYTICS.KPI_SUMMARY").iloc[0]
 
 with st.sidebar:
     st.title("Explore RoutePulse")
@@ -645,9 +781,7 @@ st.warning(
 )
 
 scope_mode_label = "all modes" if selected_mode == "All modes" else selected_mode
-st.caption(
-    f"Showing: {scope_mode_label} · {selected_area} · {selected_view.lower()}"
-)
+st.caption(f"Showing: {scope_mode_label} · {selected_area} · {selected_view.lower()}")
 
 scope_metrics = load_scope_metrics()
 selected_scope_metrics = scope_metrics[
@@ -669,9 +803,9 @@ if int(event_kpi["STOP_EVENTS"]) == 0:
 late_percentage = float(event_kpi["LATE_PERCENTAGE"])
 one_in_n = round(100.0 / late_percentage) if late_percentage > 0 else None
 one_in_text = (
-    f"Roughly 1 in {one_in_n:,} stop visits with a delay figure was reported late"
+    f"Roughly 1 in {one_in_n:,} timed stop visits was reported seriously late"
     if one_in_n
-    else "No stop visit with a delay figure was reported over 5 minutes late"
+    else "No timed stop visit was reported more than 5 minutes late"
 )
 
 st.markdown(
@@ -716,39 +850,68 @@ card_html = f"""
 <div class="rp-card-grid">
   <div class="rp-card">
     <div class="rp-card-accent"></div>
-    <div class="rp-card-label">Delays over 5 minutes</div>
+    <div class="rp-card-label">Serious delays (&gt;5 min)</div>
     <div class="rp-card-value">{late_percentage:.1f}%</div>
     <div class="rp-card-copy">{html.escape(one_in_text)}</div>
   </div>
   <div class="rp-card">
     <div class="rp-card-accent"></div>
-    <div class="rp-card-label">P90 reported delay</div>
-    <div class="rp-card-value">{float(event_kpi['P90_DELAY_MINUTES']):.1f} min</div>
-    <div class="rp-card-copy">90% of reported delay values were at or below this level</div>
+    <div class="rp-card-label">Upper-range reported delay (P90)</div>
+    <div class="rp-card-value">{float(event_kpi["P90_DELAY_MINUTES"]):.1f} min</div>
+    <div class="rp-card-copy">9 in 10 timing reports were no more delayed than this</div>
   </div>
   <div class="rp-card">
     <div class="rp-card-accent"></div>
-    <div class="rp-card-label">Delay-data availability</div>
-    <div class="rp-card-value">{float(event_kpi['DELAY_COVERAGE']):.1f}%</div>
-    <div class="rp-card-copy">Share of observed stop visits containing a delay figure</div>
+    <div class="rp-card-label">Timing-data availability</div>
+    <div class="rp-card-value">{float(event_kpi["DELAY_COVERAGE"]):.1f}%</div>
+    <div class="rp-card-copy">Share of observed stop visits containing timing information</div>
   </div>
 </div>
 """
 st.markdown(card_html, unsafe_allow_html=True)
 st.caption(
     f"Based on {int(event_kpi['STOP_EVENTS']):,} observed stop visits, of which "
-    f"{int(event_kpi['DELAY_EVENTS']):,} included a delay figure. A stop visit "
-    "is one retained observation for a vehicle trip at a stop. **Late = reported "
-    "as more than 5 minutes behind the timetable.** Missing delay figures are "
-    "never treated as zero."
+    f"{int(event_kpi['DELAY_EVENTS']):,} included timing information. A stop visit "
+    "is one retained observation for a vehicle trip at a stop. **Seriously late = "
+    "reported as more than 5 minutes behind the timetable.** Missing timing values "
+    "are never treated as zero."
 )
+
+st.markdown("#### How did the timed visits compare with the schedule?")
+st.caption(
+    "The four categories below partition every stop visit that contained timing "
+    "information; they always add to 100%."
+)
+render_timing_distribution(event_kpi)
+
+with st.expander(
+    "How RoutePulse defines early, near schedule and late", expanded=False
+):
+    st.markdown(
+        """
+        - **Reported early:** more than 1 minute ahead of schedule.
+        - **Within 1 minute of schedule:** from 1 minute early through 1 minute late.
+        - **Minor delay:** more than 1 and up to 5 minutes late.
+        - **Serious delay:** more than 5 minutes late.
+        - **Timing unavailable:** the realtime stop update contained no usable timing value.
+
+        These are RoutePulse analytical categories, applied consistently so transport
+        modes can be compared. The five-minute serious-delay threshold closely follows
+        VBB public regional-rail reporting, but it is not presented as every operator's
+        contractual punctuality definition. GTFS-Realtime values can be predictions;
+        “reported early” or “reported late” does not necessarily mean a confirmed actual
+        arrival or departure. Full details are recorded in the project methodology.
+        """
+    )
 
 line_insights = (
     load_headline_line_metrics()
     .loc[
-        lambda data: (data["SCOPE_MODE"] == selected_mode)
-        & (data["SCOPE_REGION"] == selected_area)
-        & (data["DELAY_EVENTS"] >= MIN_RANK_DELAY_EVENTS)
+        lambda data: (
+            (data["SCOPE_MODE"] == selected_mode)
+            & (data["SCOPE_REGION"] == selected_area)
+            & (data["DELAY_EVENTS"] >= MIN_RANK_DELAY_EVENTS)
+        )
     ]
     .sort_values(
         ["LATE_PERCENTAGE", "LATE_EVENTS"],
@@ -759,9 +922,11 @@ line_insights = (
 headline_hours = (
     load_headline_hour_metrics()
     .loc[
-        lambda data: (data["SCOPE_MODE"] == selected_mode)
-        & (data["SCOPE_REGION"] == selected_area)
-        & (data["DELAY_EVENTS"] >= MIN_HEADLINE_HOUR_DELAY_EVENTS)
+        lambda data: (
+            (data["SCOPE_MODE"] == selected_mode)
+            & (data["SCOPE_REGION"] == selected_area)
+            & (data["DELAY_EVENTS"] >= MIN_HEADLINE_HOUR_DELAY_EVENTS)
+        )
     ]
     .sort_values(
         ["LATE_PERCENTAGE", "DELAY_EVENTS"],
@@ -769,19 +934,22 @@ headline_hours = (
     )
 )
 
-st.subheader("Key findings")
+st.subheader("What stands out in this selection")
 if not line_insights.empty:
     top_rate = line_insights.loc[line_insights["LATE_PERCENTAGE"].idxmax()]
     top_volume = line_insights.loc[line_insights["LATE_EVENTS"].idxmax()]
+    top_rate_service = service_description(top_rate)
+    top_volume_service = service_description(top_volume)
     st.markdown(
-        f"- **Highest observed line rate:** {top_rate['ROUTE_DISPLAY_NAME']} "
-        f"({float(top_rate['LATE_PERCENTAGE']):.1f}% of "
-        f"{int(top_rate['DELAY_EVENTS']):,} visits with a delay figure"
-        f"{evidence_suffix(int(top_rate['DELAY_EVENTS']), float(top_rate['DELAY_COVERAGE']))}). "
-        f"**Highest observed line volume:** {top_volume['ROUTE_DISPLAY_NAME']} "
-        f"({int(top_volume['LATE_EVENTS']):,} late stop visits from "
-        f"{int(top_volume['DELAY_EVENTS']):,} visits with a delay figure"
-        f"{evidence_suffix(int(top_volume['DELAY_EVENTS']), float(top_volume['DELAY_COVERAGE']))})."
+        f"- **Highest serious-delay share:** {top_rate_service} had "
+        f"{float(top_rate['LATE_PERCENTAGE']):.1f}% of its "
+        f"{int(top_rate['DELAY_EVENTS']):,} timed stop visits reported more than "
+        f"5 minutes late"
+        f"{evidence_suffix(int(top_rate['DELAY_EVENTS']), float(top_rate['DELAY_COVERAGE']))}. "
+        f"**Largest number of serious delays:** {top_volume_service} recorded "
+        f"{int(top_volume['LATE_EVENTS']):,} seriously late stop visits from "
+        f"{int(top_volume['DELAY_EVENTS']):,} timed visits"
+        f"{evidence_suffix(int(top_volume['DELAY_EVENTS']), float(top_volume['DELAY_COVERAGE']))}."
     )
 complete_headline_hours = headline_hours[
     ~headline_hours["IS_PARTIAL_COLLECTION_HOUR"].fillna(False)
@@ -791,15 +959,18 @@ if not complete_headline_hours.empty:
         complete_headline_hours["LATE_PERCENTAGE"].idxmax()
     ]
     peak_time = pd.to_datetime(peak_hour["OBSERVATION_HOUR_BERLIN"])
+    peak_hour_evidence = evidence_suffix(
+        int(peak_hour["DELAY_EVENTS"]), float(peak_hour["DELAY_COVERAGE"])
+    )
     st.markdown(
-        f"- **Highest observed complete-hour share:** {peak_time:%A %H:%M}, "
-        f"when {float(peak_hour['LATE_PERCENTAGE']):.1f}% of "
-        f"{int(peak_hour['DELAY_EVENTS']):,} stop visits with a delay figure"
-        f"{evidence_suffix(int(peak_hour['DELAY_EVENTS']), float(peak_hour['DELAY_COVERAGE']))} were over "
-        "five minutes late. The first and last collection hours were partial."
+        f"- **Most difficult complete hour:** At {peak_time:%A %H:%M}, "
+        f"{float(peak_hour['LATE_PERCENTAGE']):.1f}% of "
+        f"{int(peak_hour['DELAY_EVENTS']):,} timed stop visits were over "
+        f"five minutes late{peak_hour_evidence}. The first and last collection "
+        "hours were partial."
     )
 st.markdown(
-    f"- **Confidence:** delay data covers {float(event_kpi['DELAY_COVERAGE']):.1f}% "
+    f"- **Confidence:** timing information covers {float(event_kpi['DELAY_COVERAGE']):.1f}% "
     f"of this scope, and the collection spans only {collection_hours:.1f} "
     "Friday/weekend hours. Rankings are preliminary."
 )
@@ -809,8 +980,8 @@ st.markdown(
     <div class="rp-build-strip">
       <strong>How this was built</strong><br/>
       VBB GTFS-Realtime and Static → S3 → Snowflake → Streamlit ·
-      {int(raw_kpi['STOP_OBSERVATIONS']):,} raw stop-status rows →
-      {int(window['ALL_UNIQUE_STOP_EVENTS']):,} observed stop visits →
+      {int(raw_kpi["STOP_OBSERVATIONS"]):,} raw stop-status rows →
+      {int(window["ALL_UNIQUE_STOP_EVENTS"]):,} observed stop visits →
       zero duplicate event keys after validation
     </div>
     """,
@@ -955,9 +1126,7 @@ def prepare_network_map_data(
         network_paths["FOCUS_SERVICE_KEY"].isin(service_keys)
     ].copy()
     if mode != "All modes":
-        network_paths = network_paths[
-            network_paths["TRANSPORT_MODE"] == mode
-        ].copy()
+        network_paths = network_paths[network_paths["TRANSPORT_MODE"] == mode].copy()
     else:
         network_paths = network_paths.copy()
     if network_paths.empty:
@@ -970,20 +1139,14 @@ def prepare_network_map_data(
             )
         )
     elif mode == "Bus":
-        network_paths["color"] = [rgba(MODE_COLORS["Bus"], 215)] * len(
-            network_paths
-        )
+        network_paths["color"] = [rgba(MODE_COLORS["Bus"], 215)] * len(network_paths)
     else:
         service_keys = sorted(network_paths["FOCUS_SERVICE_KEY"].unique())
         service_colors = {
-            key: rgba(
-                NETWORK_LINE_PALETTE[index % len(NETWORK_LINE_PALETTE)], 220
-            )
+            key: rgba(NETWORK_LINE_PALETTE[index % len(NETWORK_LINE_PALETTE)], 220)
             for index, key in enumerate(service_keys)
         }
-        network_paths["color"] = network_paths["FOCUS_SERVICE_KEY"].map(
-            service_colors
-        )
+        network_paths["color"] = network_paths["FOCUS_SERVICE_KEY"].map(service_colors)
 
     map_data = network_paths.rename(
         columns={
@@ -1122,7 +1285,7 @@ def render_network_map():
 def render_stations():
     st.header("Which stations were late most often?")
     st.caption(
-        "Out of every 100 visits at each station that had a delay figure, "
+        "Out of every 100 timed visits at each station, "
         "how many were reported more than 5 minutes behind the timetable?"
     )
     station_data = prepare_station_ranking(
@@ -1132,20 +1295,18 @@ def render_stations():
     if station_data.empty:
         st.info(
             f"Not enough {selected_area} stations have at least "
-            f"{MIN_RANK_DELAY_EVENTS:,} stop visits with a delay figure for "
+            f"{MIN_RANK_DELAY_EVENTS:,} stop visits with timing information for "
             f"{scope_mode_label}."
         )
         return
 
     scope_average = float(station_data.iloc[0]["SCOPE_LATE_PERCENTAGE"])
-    average_mode_label = (
-        "All-mode" if selected_mode == "All modes" else selected_mode
-    )
+    average_mode_label = "All-mode" if selected_mode == "All modes" else selected_mode
     chart_column, map_column = st.columns([1.12, 1])
     with chart_column:
         st.subheader("Stations with the most frequent serious delays")
         st.caption(
-            "The ranking starts at 100 stop visits with a delay figure. Paler "
+            "The ranking starts at 100 stop visits with timing information. Paler "
             "bars rest on fewer visits and should be treated as early signals."
         )
         st.altair_chart(
@@ -1159,27 +1320,23 @@ def render_stations():
                 show_sample_in_label=False,
                 show_counts_in_rate_label=False,
                 fade_limited_samples=True,
-                average_label=(
-                    f"{average_mode_label} average: {scope_average:.1f}%"
-                ),
+                average_label=(f"{average_mode_label} average: {scope_average:.1f}%"),
                 label_limit=390,
             ),
             width="stretch",
         )
         st.caption(
-            "Paler bars rest on 100–299 visits with a delay figure; treat them "
+            "Paler bars rest on 100–299 timed visits; treat them "
             "as an early signal. The dashed line is labelled with the selected "
             "region-and-mode average."
         )
 
-    mapped_stations = station_data.dropna(
-        subset=["STATION_LAT", "STATION_LON"]
-    ).copy()
+    mapped_stations = station_data.dropna(subset=["STATION_LAT", "STATION_LON"]).copy()
     with map_column:
         st.subheader("Where are these stations?")
         st.caption(
             "Numbers match the ranking; the top three station names are shown. "
-            "Larger circles had more visits with a delay figure."
+            "Larger circles had more visits with timing information."
         )
         if mapped_stations.empty:
             st.info("Coordinates are unavailable for the ranked stations.")
@@ -1190,6 +1347,9 @@ def render_stations():
                     "STATION_LAT": "station_lat",
                     "STATION_LON": "station_lon",
                     "LATE_PERCENTAGE": "late_percentage",
+                    "EARLY_EVENTS": "early_events",
+                    "NEAR_SCHEDULE_EVENTS": "near_schedule_events",
+                    "MINOR_DELAY_EVENTS": "minor_delay_events",
                     "LATE_EVENTS": "late_events",
                     "DELAY_EVENTS": "delay_events",
                     "DELAY_COVERAGE": "delay_coverage",
@@ -1261,9 +1421,12 @@ def render_stations():
                             "<b>{station_name}</b><br/>"
                             "Rank: {rank_label}<br/>"
                             "Reported over 5 minutes late: {late_percentage}%<br/>"
-                            "Late stop visits: {late_events}<br/>"
-                            "Visits with a delay figure: {delay_events}<br/>"
-                            "Visits with a delay figure: {delay_coverage}% of all visits"
+                            "Reported &gt;1 min early: {early_events}<br/>"
+                            "Within 1 min of schedule: {near_schedule_events}<br/>"
+                            "Reported 1–5 min late: {minor_delay_events}<br/>"
+                            "Reported &gt;5 min late: {late_events}<br/>"
+                            "Visits with timing information: {delay_events}<br/>"
+                            "Timing-data availability: {delay_coverage}%"
                         )
                     },
                 ),
@@ -1278,18 +1441,20 @@ def render_stations():
                   <span style="color:#F97316">●</span> 10–19.9% &nbsp;
                   <span style="color:#EF4444">●</span> 20% or more.
                   Numbers match the bars. Larger dots contain more visits with
-                  a delay figure.
+                  timing information.
                 </div>
                 """,
                 unsafe_allow_html=True,
             )
 
-    if station_data["DELAY_EVENTS"].between(
-        MIN_RANK_DELAY_EVENTS, LOW_SAMPLE_UPPER - 1
-    ).all():
+    if (
+        station_data["DELAY_EVENTS"]
+        .between(MIN_RANK_DELAY_EVENTS, LOW_SAMPLE_UPPER - 1)
+        .all()
+    ):
         st.warning(
             "Every station in this ranking rests on only 100–299 visits with a "
-            "delay figure. Treat the ranking as an early signal, not a verdict."
+            "timing value. Treat the ranking as an early signal, not a verdict."
         )
 
     top_station = station_data.iloc[0]
@@ -1305,12 +1470,14 @@ def render_stations():
         else ""
     )
     comparison = (
-        f", roughly {relative_rate:.1f} times the " if relative_rate is not None else ", compared with the "
+        f", roughly {relative_rate:.1f} times the "
+        if relative_rate is not None
+        else ", compared with the "
     )
     st.info(
         f"**What this means:** At {top_station['STATION_NAME']}, "
         f"{int(top_station['LATE_EVENTS']):,} of "
-        f"{int(top_station['DELAY_EVENTS']):,} visits with a delay figure "
+        f"{int(top_station['DELAY_EVENTS']):,} visits with timing information "
         f"({float(top_station['LATE_PERCENTAGE']):.1f}%) were reported more than "
         f"5 minutes late{comparison}{selected_area} {scope_mode_label} "
         f"average of {scope_average:.1f}%.{early_signal} This does not establish "
@@ -1321,7 +1488,7 @@ def render_stations():
 def render_mode_comparison():
     st.header("Which transport modes were late most often?")
     st.caption(
-        "Of the stop visits with a delay figure, what percentage were reported "
+        "Of the stop visits with timing information, what percentage were reported "
         "more than 5 minutes behind the timetable? Select one transport mode "
         "above to compare its individual lines."
     )
@@ -1349,8 +1516,18 @@ def render_mode_comparison():
             tooltip=[
                 alt.Tooltip("TRANSPORT_MODE:N", title="Mode"),
                 alt.Tooltip("LATE_PERCENTAGE:Q", title="Over 5 min (%)", format=".2f"),
-                alt.Tooltip("DELAY_COVERAGE:Q", title="Delay-data availability (%)", format=".2f"),
-                alt.Tooltip("DELAY_EVENTS:Q", title="Visits with a delay figure", format=","),
+                alt.Tooltip("EARLY_EVENTS:Q", title=">1 min early", format=","),
+                alt.Tooltip("NEAR_SCHEDULE_EVENTS:Q", title="Within 1 min", format=","),
+                alt.Tooltip("MINOR_DELAY_EVENTS:Q", title="1–5 min late", format=","),
+                alt.Tooltip("LATE_EVENTS:Q", title=">5 min late", format=","),
+                alt.Tooltip(
+                    "DELAY_COVERAGE:Q",
+                    title="Timing-data availability (%)",
+                    format=".2f",
+                ),
+                alt.Tooltip(
+                    "DELAY_EVENTS:Q", title="Visits with timing information", format=","
+                ),
             ],
         )
         .properties(height=350)
@@ -1368,10 +1545,10 @@ def render_mode_comparison():
     top_mode = mode_data.iloc[0]
     st.info(
         f"**Observed takeaway:** {top_mode['TRANSPORT_MODE']} had the highest "
-        f"mode-level late share in this sample at "
+        f"share of timed visits reported more than 5 minutes late: "
         f"{float(top_mode['LATE_PERCENTAGE']):.1f}%"
         f"{evidence_suffix(int(top_mode['DELAY_EVENTS']), float(top_mode['DELAY_COVERAGE']))}. "
-        "Delay-data completeness is available on hover because reporting "
+        "Timing-data availability is shown on hover because reporting "
         "completeness differs by mode."
     )
 
@@ -1383,8 +1560,8 @@ def render_lines():
 
     st.header("Which lines were reported late most often?")
     st.caption(
-        "Out of every 100 observed stop visits on a line that had a delay "
-        "figure, how many were reported more than 5 minutes behind the timetable?"
+        "Out of every 100 timed stop visits on a line, how many were reported "
+        "more than 5 minutes behind the timetable?"
     )
 
     line_data = load_headline_line_metrics()
@@ -1400,16 +1577,12 @@ def render_lines():
     if line_data.empty:
         st.info(
             f"No {selected_mode} line in {selected_area} meets the minimum of "
-            f"{MIN_RANK_DELAY_EVENTS:,} stop visits with a delay figure."
+            f"{MIN_RANK_DELAY_EVENTS:,} stop visits with timing information."
         )
         return
 
     def line_with_termini(row):
-        if pd.notna(row["TERMINI"]):
-            first_direction = str(row["TERMINI"]).split(" / ")[0]
-            first_direction = first_direction.replace(" → ", " to ")
-            return f"Line {row['ROUTE_DISPLAY_NAME']} — {first_direction}"
-        return f"Line {row['ROUTE_DISPLAY_NAME']}"
+        return service_description(row).replace(" → ", " to ")
 
     line_data["LINE_LABEL"] = line_data.apply(
         line_with_termini,
@@ -1418,7 +1591,7 @@ def render_lines():
     line_data["LINE_OPTION_LABEL"] = line_data["LINE_LABEL"]
     top_ten = line_data.head(10).copy()
     st.caption(
-        "Paler bars rest on fewer than 300 stop visits with a delay figure; "
+        "Paler bars rest on fewer than 300 timed stop visits; "
         "treat them as early signals. Operator and full route details are in "
         "the tooltip."
     )
@@ -1438,28 +1611,28 @@ def render_lines():
 
     rate_column, volume_column = st.columns(2)
     with rate_column:
-        st.subheader("Most often late")
-        st.caption("Highest percentage reported more than 5 minutes late.")
+        st.subheader("Highest serious-delay share")
+        st.caption(
+            "Largest percentage of timed visits reported more than 5 minutes late."
+        )
         for _, row in line_data.nlargest(5, "LATE_PERCENTAGE").iterrows():
             evidence_note = (
-                " — early signal"
-                if int(row["DELAY_EVENTS"]) < LOW_SAMPLE_UPPER
-                else ""
+                " — early signal" if int(row["DELAY_EVENTS"]) < LOW_SAMPLE_UPPER else ""
             )
             st.markdown(
-                f"**Line {row['ROUTE_DISPLAY_NAME']}** — "
+                f"**{service_description(row, include_termini=False)}** — "
                 f"{float(row['LATE_PERCENTAGE']):.1f}% "
                 f"({int(row['LATE_EVENTS']):,} of "
-                f"{int(row['DELAY_EVENTS']):,} visits){evidence_note}"
+                f"{int(row['DELAY_EVENTS']):,} timed visits){evidence_note}"
             )
     with volume_column:
-        st.subheader("Most late stop visits")
-        st.caption("Largest number of visits reported more than 5 minutes late.")
+        st.subheader("Largest number of serious delays")
+        st.caption("Most stop visits reported more than 5 minutes late.")
         for _, row in line_data.nlargest(5, "LATE_EVENTS").iterrows():
             st.markdown(
-                f"**Line {row['ROUTE_DISPLAY_NAME']}** — "
-                f"{int(row['LATE_EVENTS']):,} late stop visits "
-                f"(from {int(row['DELAY_EVENTS']):,} with a delay figure)"
+                f"**{service_description(row, include_termini=False)}** — "
+                f"{int(row['LATE_EVENTS']):,} seriously late stop visits "
+                f"(from {int(row['DELAY_EVENTS']):,} timed visits)"
             )
 
     line_labels = line_data.set_index("FOCUS_SERVICE_KEY")[
@@ -1498,22 +1671,22 @@ def render_lines():
         else top_rate
     )
     takeaway = (
-        f"**What this means:** The strongest well-supported high-rate signal "
-        f"was Line {supported_rate['ROUTE_DISPLAY_NAME']}: "
+        f"**What this means:** The strongest well-supported serious-delay share "
+        f"was {service_description(supported_rate)}: "
         f"{int(supported_rate['LATE_EVENTS']):,} of "
-        f"{int(supported_rate['DELAY_EVENTS']):,} visits with a delay figure "
+        f"{int(supported_rate['DELAY_EVENTS']):,} timed visits "
         f"({float(supported_rate['LATE_PERCENTAGE']):.1f}%) were reported more "
         "than 5 minutes late."
     )
     if top_rate["FOCUS_SERVICE_KEY"] != supported_rate["FOCUS_SERVICE_KEY"]:
         takeaway += (
-            f" Line {top_rate['ROUTE_DISPLAY_NAME']} had a higher observed rate "
+            f" {service_description(top_rate)} had a higher observed share "
             f"of {float(top_rate['LATE_PERCENTAGE']):.1f}%, but that came from "
             f"only {int(top_rate['DELAY_EVENTS']):,} visits, so treat it as an "
             "early signal rather than a verdict."
         )
     else:
-        takeaway += " It was also the highest observed rate overall."
+        takeaway += " It also had the highest serious-delay share overall."
     st.info(takeaway)
 
     if selected_mode in ["Bus", "Regional rail"]:
@@ -1571,6 +1744,14 @@ def render_selected_line_map(service_key: str, line_label: str):
             AVG(station_lon) AS station_lon,
             COUNT(*) AS stop_events,
             COUNT_IF(reported_delay_seconds IS NOT NULL) AS delay_events,
+            COUNT_IF(reported_delay_seconds < -60) AS early_events,
+            COUNT_IF(
+                reported_delay_seconds BETWEEN -60 AND 60
+            ) AS near_schedule_events,
+            COUNT_IF(
+                reported_delay_seconds > 60
+                AND reported_delay_seconds <= 300
+            ) AS minor_delay_events,
             COUNT_IF(reported_delay_seconds > 300) AS late_events,
             ROUND(
                 100.0 * COUNT_IF(reported_delay_seconds IS NOT NULL)
@@ -1596,9 +1777,7 @@ def render_selected_line_map(service_key: str, line_label: str):
         path_points = line_path.copy()
         path_points["path"] = path_points["MAP_PATH_JSON"].map(parse_json_value)
         path_points = path_points[
-            path_points["path"].map(
-                lambda path: path is not None and len(path) >= 2
-            )
+            path_points["path"].map(lambda path: path is not None and len(path) >= 2)
         ].copy()
         if not path_points.empty:
             path_points["color"] = [
@@ -1634,6 +1813,9 @@ def render_selected_line_map(service_key: str, line_label: str):
                 "STATION_LAT": "station_lat",
                 "STATION_LON": "station_lon",
                 "LATE_PERCENTAGE": "late_percentage",
+                "EARLY_EVENTS": "early_events",
+                "NEAR_SCHEDULE_EVENTS": "near_schedule_events",
+                "MINOR_DELAY_EVENTS": "minor_delay_events",
                 "LATE_EVENTS": "late_events",
                 "DELAY_EVENTS": "delay_events",
                 "DELAY_COVERAGE": "delay_coverage",
@@ -1652,7 +1834,11 @@ def render_selected_line_map(service_key: str, line_label: str):
         stop_points["tooltip_detail"] = stop_points.apply(
             lambda row: (
                 f"{float(row['late_percentage']):.1f}% over 5 minutes late · "
-                f"{int(row['delay_events']):,} visits with a delay figure"
+                f"{int(row['early_events']):,} >1 min early · "
+                f"{int(row['near_schedule_events']):,} within 1 min · "
+                f"{int(row['minor_delay_events']):,} 1–5 min late · "
+                f"{int(row['late_events']):,} >5 min late · "
+                f"{int(row['delay_events']):,} timed visits"
             ),
             axis=1,
         )
@@ -1706,9 +1892,7 @@ def render_selected_line_map(service_key: str, line_label: str):
             map_style=None,
             initial_view_state=map_view,
             layers=layers,
-            tooltip={
-                "html": "<b>{tooltip_title}</b><br/>{tooltip_detail}"
-            },
+            tooltip={"html": "<b>{tooltip_title}</b><br/>{tooltip_detail}"},
         ),
         width="stretch",
         height=430,
@@ -1742,8 +1926,24 @@ def render_category_comparison():
             tooltip=[
                 alt.Tooltip("GERMAN_SERVICE_CATEGORY:N", title="Category"),
                 alt.Tooltip("LATE_PERCENTAGE:Q", title="Over 5 min (%)", format=".2f"),
-                alt.Tooltip("DELAY_EVENTS:Q", title="Visits with a delay figure", format=","),
-                alt.Tooltip("DELAY_COVERAGE:Q", title="Visits with a delay figure (%)", format=".2f"),
+                alt.Tooltip("EARLY_EVENTS:Q", title=">1 min early", format=","),
+                alt.Tooltip(
+                    "NEAR_SCHEDULE_EVENTS:Q",
+                    title="Within 1 min of schedule",
+                    format=",",
+                ),
+                alt.Tooltip("MINOR_DELAY_EVENTS:Q", title="1–5 min late", format=","),
+                alt.Tooltip("LATE_EVENTS:Q", title=">5 min late", format=","),
+                alt.Tooltip(
+                    "DELAY_EVENTS:Q",
+                    title="Visits with timing information",
+                    format=",",
+                ),
+                alt.Tooltip(
+                    "DELAY_COVERAGE:Q",
+                    title="Timing-data availability (%)",
+                    format=".2f",
+                ),
             ],
         )
         .properties(height=max(180, 48 * len(category_data)))
@@ -1761,7 +1961,7 @@ def render_category_comparison():
 
 
 def render_when():
-    st.header("When did delays show up?")
+    st.header("When were services early, near schedule or late?")
     metric_choice = selected_hour_metric
     hourly = load_headline_hour_metrics()
     hourly = hourly[
@@ -1784,21 +1984,20 @@ def render_when():
         )
         .sort_values("OBSERVATION_DAY")
     )
-    day_summary["DAY_CENTER"] = day_summary["DAY_START"] + (
-        day_summary["DAY_END"] - day_summary["DAY_START"]
-    ) / 2
-    day_summary["DAY_LABEL"] = day_summary["OBSERVATION_DAY"].dt.strftime(
-        "%A %d %b"
+    day_summary["DAY_CENTER"] = (
+        day_summary["DAY_START"]
+        + (day_summary["DAY_END"] - day_summary["DAY_START"]) / 2
     )
+    day_summary["DAY_LABEL"] = day_summary["OBSERVATION_DAY"].dt.strftime("%A %d %b")
     first_day_index = day_summary.index[0]
     last_day_index = day_summary.index[-1]
-    if day_summary.loc[first_day_index, "DAY_START"] > day_summary.loc[
-        first_day_index, "OBSERVATION_DAY"
-    ]:
+    if (
+        day_summary.loc[first_day_index, "DAY_START"]
+        > day_summary.loc[first_day_index, "OBSERVATION_DAY"]
+    ):
         day_summary.loc[first_day_index, "DAY_LABEL"] += " (partial)"
     if day_summary.loc[last_day_index, "DAY_END"] < (
-        day_summary.loc[last_day_index, "OBSERVATION_DAY"]
-        + pd.Timedelta(hours=23)
+        day_summary.loc[last_day_index, "OBSERVATION_DAY"] + pd.Timedelta(hours=23)
     ):
         day_summary.loc[last_day_index, "DAY_LABEL"] += " (partial)"
     day_boundaries = day_summary.iloc[1:][["OBSERVATION_DAY"]].copy()
@@ -1815,9 +2014,7 @@ def render_when():
     hourly["ELIGIBLE"] = hourly["DELAY_EVENTS"] >= MIN_HEADLINE_HOUR_DELAY_EVENTS
     hourly["ELIGIBLE_MEASURE"] = hourly[measure_column].where(hourly["ELIGIBLE"])
     eligible_points = hourly[hourly["ELIGIBLE"] & hourly[measure_column].notna()]
-    low_sample_points = hourly[
-        (~hourly["ELIGIBLE"]) & hourly[measure_column].notna()
-    ]
+    low_sample_points = hourly[(~hourly["ELIGIBLE"]) & hourly[measure_column].notna()]
     partial_rows = hourly[
         hourly["IS_PARTIAL_COLLECTION_HOUR"].fillna(False)
         & hourly[measure_column].notna()
@@ -1835,7 +2032,19 @@ def render_when():
             format="%a %d %b, %H:%M",
         ),
         alt.Tooltip(f"{measure_column}:Q", title=measure_title, format=".2f"),
-        alt.Tooltip("DELAY_EVENTS:Q", title="Visits with a delay figure", format=","),
+        alt.Tooltip("EARLY_EVENTS:Q", title=">1 min early", format=","),
+        alt.Tooltip(
+            "NEAR_SCHEDULE_EVENTS:Q",
+            title="Within 1 min of schedule",
+            format=",",
+        ),
+        alt.Tooltip("MINOR_DELAY_EVENTS:Q", title="1–5 min late", format=","),
+        alt.Tooltip("LATE_EVENTS:Q", title=">5 min late", format=","),
+        alt.Tooltip(
+            "DELAY_EVENTS:Q",
+            title="Visits with timing information",
+            format=",",
+        ),
         alt.Tooltip("IS_PARTIAL_COLLECTION_HOUR:N", title="Partial hour"),
     ]
     eligible_line = (
@@ -1893,14 +2102,18 @@ def render_when():
                     labelOverlap="greedy",
                 ),
             ),
-            y=alt.Y("DELAY_EVENTS:Q", title="Stop visits with a delay figure"),
+            y=alt.Y("DELAY_EVENTS:Q", title="Stop visits with timing information"),
             tooltip=[
                 alt.Tooltip(
                     "OBSERVATION_HOUR_BERLIN:T",
                     title="Hour",
                     format="%a %d %b, %H:%M",
                 ),
-                alt.Tooltip("DELAY_EVENTS:Q", title="Visits with a delay figure", format=","),
+                alt.Tooltip(
+                    "DELAY_EVENTS:Q",
+                    title="Visits with timing information",
+                    format=",",
+                ),
                 alt.Tooltip("IS_PARTIAL_COLLECTION_HOUR:N", title="Partial hour"),
             ],
         )
@@ -1951,7 +2164,7 @@ def render_when():
         width="stretch",
     )
     st.caption(
-        "Solid points have at least 100 visits with a delay figure. Hollow grey points have "
+        "Solid points have at least 100 timed visits. Hollow grey points have "
         "fewer than 100 and do not connect into the headline line. Red diamonds "
         "mark the partial first and last collection hours."
     )
@@ -1970,43 +2183,39 @@ def render_when():
         peak_time = pd.to_datetime(peak["OBSERVATION_HOUR_BERLIN"])
         if metric_choice == "% over 5 minutes":
             line_scope = (
-                "all observed"
-                if selected_mode == "All modes"
-                else selected_mode
+                "all observed" if selected_mode == "All modes" else selected_mode
             )
             takeaway = (
                 f"Across {line_scope} lines, among complete hours with at least "
-                f"{MIN_HEADLINE_HOUR_DELAY_EVENTS:,} visits with a delay figure, "
+                f"{MIN_HEADLINE_HOUR_DELAY_EVENTS:,} timed visits, "
                 f"{peak_time:%A %H:%M} had the highest observed share over five "
                 f"minutes late: {float(peak['LATE_PERCENTAGE']):.1f}% of "
-                f"{int(peak['DELAY_EVENTS']):,} visits with a delay figure"
+                f"{int(peak['DELAY_EVENTS']):,} timed visits"
                 f"{evidence_suffix(int(peak['DELAY_EVENTS']), float(peak['DELAY_COVERAGE']))}."
             )
         else:
             line_scope = (
-                "all observed"
-                if selected_mode == "All modes"
-                else selected_mode
+                "all observed" if selected_mode == "All modes" else selected_mode
             )
             takeaway = (
                 f"Across {line_scope} lines, among complete hours with at least "
-                f"{MIN_HEADLINE_HOUR_DELAY_EVENTS:,} visits with a delay figure, "
+                f"{MIN_HEADLINE_HOUR_DELAY_EVENTS:,} timed visits, "
                 f"{peak_time:%A %H:%M} had the highest observed P90 reported "
                 f"delay: {float(peak['P90_DELAY_MINUTES']):.2f} minutes from "
-                f"{int(peak['DELAY_EVENTS']):,} visits with a delay figure"
+                f"{int(peak['DELAY_EVENTS']):,} timed visits"
                 f"{evidence_suffix(int(peak['DELAY_EVENTS']), float(peak['DELAY_COVERAGE']))}."
             )
         st.info(f"**Observed takeaway:** {takeaway}")
 
 
 def render_data_quality():
-    st.header("How complete is our delay data?")
+    st.header("How complete is our timing data?")
     st.caption(
-        "Shorter bars mean more observed stop visits were missing a delay "
-        "figure, so we know less about how late those services really were. "
+        "Shorter bars mean more observed stop visits were missing timing "
+        "information, so we know less about how they compared with the timetable. "
         "This measures data availability—not punctuality or accuracy."
     )
-    st.subheader("Delay figures available by transport mode")
+    st.subheader("Timing information available by transport mode")
     st.caption(
         f"This compares every mode within {selected_area}; it does not change "
         "with the selected transport-mode control."
@@ -2031,9 +2240,7 @@ def render_data_quality():
             "Very complete (>90%)"
             if float(value) > 90
             else (
-                "Mostly complete (75–90%)"
-                if float(value) >= 75
-                else "Partial (<75%)"
+                "Mostly complete (75–90%)" if float(value) >= 75 else "Partial (<75%)"
             )
         )
     )
@@ -2051,12 +2258,12 @@ def render_data_quality():
             y=alt.Y("TRANSPORT_MODE:N", sort="-x", title=None),
             x=alt.X(
                 "DELAY_DATA_AVAILABILITY:Q",
-                title="Observed stop visits with a delay figure (%)",
+                title="Observed stop visits with timing information (%)",
                 scale=alt.Scale(domain=[0, 100]),
             ),
             color=alt.Color(
                 "AVAILABILITY_GROUP:N",
-                title="How much delay information is available",
+                title="How much timing information is available",
                 scale=alt.Scale(
                     domain=[
                         "Very complete (>90%)",
@@ -2069,9 +2276,27 @@ def render_data_quality():
             tooltip=[
                 alt.Tooltip("TRANSPORT_MODE:N", title="Mode"),
                 alt.Tooltip("AVAILABILITY_GROUP:N", title="Availability group"),
-                alt.Tooltip("DELAY_DATA_AVAILABILITY:Q", title="Visits with a delay figure (%)", format=".2f"),
-                alt.Tooltip("UNIQUE_STOP_EVENTS:Q", title="Observed stop visits", format=","),
-                alt.Tooltip("DELAY_REPORTED_EVENTS:Q", title="Visits with a delay figure", format=","),
+                alt.Tooltip(
+                    "DELAY_DATA_AVAILABILITY:Q",
+                    title="Timing-data availability (%)",
+                    format=".2f",
+                ),
+                alt.Tooltip(
+                    "UNIQUE_STOP_EVENTS:Q", title="Observed stop visits", format=","
+                ),
+                alt.Tooltip(
+                    "DELAY_REPORTED_EVENTS:Q",
+                    title="Visits with timing information",
+                    format=",",
+                ),
+                alt.Tooltip("EARLY_EVENTS:Q", title=">1 min early", format=","),
+                alt.Tooltip(
+                    "NEAR_SCHEDULE_EVENTS:Q",
+                    title="Within 1 min of schedule",
+                    format=",",
+                ),
+                alt.Tooltip("MINOR_DELAY_EVENTS:Q", title="1–5 min late", format=","),
+                alt.Tooltip("LATE_EVENTS:Q", title=">5 min late", format=","),
             ],
         )
         .properties(height=290)
@@ -2102,8 +2327,13 @@ def render_data_quality():
                 {
                     "Observed stop region": region_name,
                     "Unique stop events": 0,
-                    "Events with delay data": 0,
-                    "Delay-data availability (%)": 0.0,
+                    "Events with timing data": 0,
+                    "Timing-data availability (%)": 0.0,
+                    "Reported >1 min early": 0,
+                    "Within 1 min": 0,
+                    "Reported 1–5 min late": 0,
+                    "Reported >5 min late": 0,
+                    "Timing unavailable": 0,
                     "Over 5 minutes late (%)": None,
                 }
             )
@@ -2113,15 +2343,21 @@ def render_data_quality():
                 {
                     "Observed stop region": region_name,
                     "Unique stop events": int(row["UNIQUE_STOP_EVENTS"]),
-                    "Events with delay data": int(row["EVENTS_WITH_DELAY_DATA"]),
-                    "Delay-data availability (%)": float(row["DELAY_DATA_AVAILABILITY"]),
+                    "Events with timing data": int(row["EVENTS_WITH_TIMING_DATA"]),
+                    "Timing-data availability (%)": float(
+                        row["TIMING_DATA_AVAILABILITY"]
+                    ),
+                    "Reported >1 min early": int(row["EARLY_EVENTS"]),
+                    "Within 1 min": int(row["NEAR_SCHEDULE_EVENTS"]),
+                    "Reported 1–5 min late": int(row["MINOR_DELAY_EVENTS"]),
+                    "Reported >5 min late": int(row["LATE_EVENTS"]),
+                    "Timing unavailable": int(row["TIMING_UNAVAILABLE_EVENTS"]),
                     "Over 5 minutes late (%)": float(row["OVER_FIVE_MINUTES_LATE"]),
                 }
             )
     region_table = pd.DataFrame(region_rows)
     total_events = int(region_table["Unique stop events"].sum())
-    total_delay_events = int(region_table["Events with delay data"].sum())
-    total_late_events = int(event_kpi["LATE_EVENTS"])
+    total_timed_events = int(region_table["Events with timing data"].sum())
     region_table = pd.concat(
         [
             region_table,
@@ -2130,15 +2366,30 @@ def render_data_quality():
                     {
                         "Observed stop region": "Total",
                         "Unique stop events": total_events,
-                        "Events with delay data": total_delay_events,
-                        "Delay-data availability (%)": (
-                            100.0 * total_delay_events / total_events
+                        "Events with timing data": total_timed_events,
+                        "Timing-data availability (%)": (
+                            100.0 * total_timed_events / total_events
                             if total_events
                             else 0.0
                         ),
+                        "Reported >1 min early": int(
+                            region_table["Reported >1 min early"].sum()
+                        ),
+                        "Within 1 min": int(region_table["Within 1 min"].sum()),
+                        "Reported 1–5 min late": int(
+                            region_table["Reported 1–5 min late"].sum()
+                        ),
+                        "Reported >5 min late": int(
+                            region_table["Reported >5 min late"].sum()
+                        ),
+                        "Timing unavailable": int(
+                            region_table["Timing unavailable"].sum()
+                        ),
                         "Over 5 minutes late (%)": (
-                            100.0 * total_late_events / total_delay_events
-                            if total_delay_events
+                            100.0
+                            * region_table["Reported >5 min late"].sum()
+                            / total_timed_events
+                            if total_timed_events
                             else None
                         ),
                     }
@@ -2148,31 +2399,37 @@ def render_data_quality():
         ignore_index=True,
     )
     st.subheader("Where were the selected stop visits recorded?")
-    st.caption(
-        f"Selected scope: {selected_mode} · {selected_area}."
-    )
+    st.caption(f"Selected scope: {selected_mode} · {selected_area}.")
     region_display = region_table.rename(
         columns={
             "Unique stop events": "Observed stop visits",
-            "Events with delay data": "Stop visits with a delay figure",
-            "Delay-data availability (%)": "Visits with a delay figure (%)",
+            "Events with timing data": "Visits with timing information",
+            "Timing-data availability (%)": "Timing-data availability (%)",
             "Over 5 minutes late (%)": "Reported over 5 minutes late (%)",
         }
     ).copy()
-    region_display["Observed stop visits"] = region_display[
-        "Observed stop visits"
+    region_display["Observed stop visits"] = region_display["Observed stop visits"].map(
+        lambda value: f"{int(value):,}"
+    )
+    region_display["Visits with timing information"] = region_display[
+        "Visits with timing information"
     ].map(lambda value: f"{int(value):,}")
-    region_display["Stop visits with a delay figure"] = region_display[
-        "Stop visits with a delay figure"
-    ].map(lambda value: f"{int(value):,}")
-    region_display["Visits with a delay figure (%)"] = region_display[
-        "Visits with a delay figure (%)"
+    for count_column in (
+        "Reported >1 min early",
+        "Within 1 min",
+        "Reported 1–5 min late",
+        "Reported >5 min late",
+        "Timing unavailable",
+    ):
+        region_display[count_column] = region_display[count_column].map(
+            lambda value: f"{int(value):,}"
+        )
+    region_display["Timing-data availability (%)"] = region_display[
+        "Timing-data availability (%)"
     ].map(lambda value: f"{float(value):.1f}%")
     region_display["Reported over 5 minutes late (%)"] = region_display[
         "Reported over 5 minutes late (%)"
-    ].map(
-        lambda value: "—" if pd.isna(value) else f"{float(value):.1f}%"
-    )
+    ].map(lambda value: "—" if pd.isna(value) else f"{float(value):.1f}%")
     region_style = region_display.style.apply(
         lambda row: (
             ["background-color: rgba(100, 116, 139, 0.20)"] * len(row)
@@ -2218,13 +2475,13 @@ def render_data_quality():
         f"""
         - The collection spans only **{collection_hours:.1f} hours**: Friday
           afternoon/evening and a weekend, without a normal weekday commute.
-        - Delay values are feed predictions as reported, not independently
+        - Timing values are feed predictions as reported, not independently
           measured arrivals.
-        - Missing delay values are excluded from delay rates and never treated
+        - Missing timing values are excluded from timing rates and never treated
           as zero.
         - Events cluster within trips, hours and disruptions; rankings are
           descriptive and preliminary.
-        - The dashboard identifies where reported delay was higher; it does
+        - The dashboard identifies where reported serious delay was higher; it does
           not establish causes, passenger impact or revenue effects.
         """
     )
@@ -2356,10 +2613,13 @@ def render_about_data():
     )
     st.markdown(
         "**Metric definitions:** an observed stop visit is the latest retained "
-        "snapshot for a trip, service date, stop sequence and stop. A visit is "
-        "late when the feed reports a delay above 300 seconds. Delay-data availability "
-        "is the share of observed stop visits with a delay figure; P90 is the "
-        "value at or below which 90% of reported delays fall. A passenger-facing "
+        "snapshot for a trip, service date, stop sequence and stop. A timed visit "
+        "is reported early when its signed timing value is below −60 seconds, "
+        "within 1 minute of schedule from −60 through +60 seconds, 1–5 minutes "
+        "late above +60 through +300 seconds, and seriously late above +300 "
+        "seconds. Timing-data availability is the share of observed stop visits "
+        "with timing information; P90 is the value at or below which 90% of "
+        "reported timing values fall. A passenger-facing "
         "line is a transport mode + GTFS agency + displayed route name; multiple "
         "technical route IDs can belong to one line."
     )
