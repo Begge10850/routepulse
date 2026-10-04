@@ -48,5 +48,12 @@ wording correctly. Area and mode filters switched to Brandenburg bus results,
 the station view loaded, and the data-quality view reconciled 289,860 selected
 stop visits. Browser inspection exposed a Deck.gl error in the redundant
 top-three station-name text layer. That layer was removed while retaining the
-numbered map markers, ranking labels and hover tooltips; the follow-up deployment
-must be checked for a clean station-map render.
+numbered map markers, ranking labels and hover tooltips.
+
+The follow-up deployment passed in a clean browser session:
+
+- the station view rendered with no browser console errors;
+- the area and mode controls switched to `Brandenburg · Bus`;
+- the data-quality view loaded for that scope;
+- its regional rows reconciled to 289,860 selected-scope stop visits; and
+- no browser console errors were recorded after the filter and view changes.
