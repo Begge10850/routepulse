@@ -57,3 +57,25 @@ The follow-up deployment passed in a clean browser session:
 - the data-quality view loaded for that scope;
 - its regional rows reconciled to 289,860 selected-scope stop visits; and
 - no browser console errors were recorded after the filter and view changes.
+
+## Timing-distribution display correction
+
+The percentage-only chart was replaced after a public-app check showed its
+0–100% scale but not the category marks. The replacement is a deterministic
+stacked distribution with four directly labelled result cards, so it does not
+depend on hover interaction and remains readable when the main content area is
+narrow.
+
+The public all-mode/all-region view was checked after deployment and displayed:
+
+| Timing category | Share | Timed stop visits |
+|---|---:|---:|
+| Reported more than 1 minute early | 5.0% | 75,983 |
+| On/near schedule, within 1 minute | 67.8% | 1,035,925 |
+| 1–5 minutes late | 21.5% | 329,195 |
+| More than 5 minutes late | 5.7% | 87,587 |
+
+The four counts total 1,528,690 timed stop visits, and the displayed shares
+partition that population to 100% subject to one-decimal rounding. The existing
+area, transport-mode and analysis controls were unchanged, and the correction
+introduced no additional Snowflake query.
