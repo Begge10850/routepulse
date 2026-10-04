@@ -244,6 +244,36 @@ Check at 1366×768 and at a standard wide desktop size:
 - warning badges are understandable without relying on colour alone;
 - maps do not auto-fit to a Europe-wide extent.
 
+## Regional-filter release evidence (4 October 2026)
+
+The Berlin/Brandenburg release uses pre-aggregated `scope_region` rows in the
+five dashboard presentation models. Region changes therefore filter cached,
+small result sets instead of rescanning the 1,755,847-row event model.
+
+- `DASHBOARD_SCOPE_METRICS`: 17 rows (6 all-region, 6 Berlin, 5 Brandenburg).
+- `DASHBOARD_CATEGORY_METRICS`: 21 rows (7 per regional scope).
+- `DASHBOARD_HOUR_METRICS`: 676 rows (240 all-region, 240 Berlin,
+  196 Brandenburg).
+- `DASHBOARD_LINE_METRICS`: 4,004 rows (1,914 all-region, 594 Berlin,
+  1,496 Brandenburg).
+- `DASHBOARD_STATION_METRICS`: 46,861 rows (23,582 all-region, 6,277 Berlin,
+  17,002 Brandenburg).
+
+The event-grain reconciliation remained unchanged: 1,755,847 total events,
+including 1,373,601 assigned to Berlin, 362,329 to Brandenburg, 3,712 outside
+both states and 16,205 unmatched/unknown.
+
+Automated browser checks against the local app measured warmed Berlin,
+Brandenburg, mode and view changes at approximately 0.29–0.42 seconds. The
+deployed Streamlit Community Cloud app measured 0.30 seconds for Berlin and
+0.35 seconds for Brandenburg after warm-up. A one-time cold-cache delay was
+observed immediately after deployment; repeated filter changes stayed
+subsecond.
+
+Static contracts, Community Cloud packaging checks, Ruff, Python compilation
+and all 37 unit tests passed before deployment. The deployed app was then
+verified against the public URL with All regions, Berlin and Brandenburg data.
+
 ## Completion status
 
 Local implementation and static checks are not production validation. The
