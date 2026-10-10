@@ -2,8 +2,9 @@ import type { MapViewState } from '@deck.gl/core';
 import { useEffect, useRef, useState } from 'react';
 import { loadMode } from './data';
 import { LayerControls } from './LayerControls';
+import { RoutePanel } from './RoutePanel';
 import { TransportMap } from './TransportMap';
-import type { ModeData, ModeId } from './types';
+import type { ModeData, ModeId, RouteFeature } from './types';
 import { MODE_ORDER, MODES } from './types';
 
 const INITIAL_VIEW: MapViewState = { longitude: 13.32, latitude: 52.48, zoom: 7.25, pitch: 56, bearing: -18 };
@@ -14,6 +15,7 @@ export default function App() {
   const [exploded, setExploded] = useState(true);
   const [explodeFactor, setExplodeFactor] = useState(1);
   const [viewState, setViewState] = useState<MapViewState>(INITIAL_VIEW);
+  const [selected, setSelected] = useState<RouteFeature | null>(null);
   const [error, setError] = useState('');
   const animationRef = useRef<number | undefined>(undefined);
 
@@ -44,6 +46,7 @@ export default function App() {
   }, [exploded]);
 
   function toggleMode(mode: ModeId, value: boolean) {
+    if (!value && selected?.mode === mode) setSelected(null);
     setEnabled(current => {
       const next = new Set(current);
       if (value) next.add(mode); else next.delete(mode);
@@ -54,21 +57,23 @@ export default function App() {
   const routeCount = Object.values(data).reduce((sum, mode) => sum + (mode?.routes.length ?? 0), 0);
 
   return <main>
-    <div className="map-stage"><TransportMap data={data} enabled={enabled} explodeFactor={explodeFactor} viewState={viewState} onViewStateChange={setViewState} /></div>
+    <div className="map-stage"><TransportMap data={data} enabled={enabled} explodeFactor={explodeFactor} viewState={viewState} selected={selected} onSelect={setSelected} onViewStateChange={setViewState} /></div>
     <header className="masthead">
       <a className="brand" href="#top" aria-label="RoutePulse home"><span className="pulse-mark" />ROUTE<span>PULSE</span></a>
       <span className="prototype-label">3D network prototype</span>
     </header>
-    <section className="intro" id="top">
+    {!selected && <section className="intro" id="top">
       <p className="eyebrow">Berlin + Brandenburg · scheduled network</p>
       <h1>See the system.<br /><em>Layer by layer.</em></h1>
       <p className="lede">Five transport networks, one shared geography. Rotate the model, separate the layers, and read the region as a connected system.</p>
       <div className="stats"><span><strong>{routeCount || '—'}</strong> representative routes</span><span><strong>5</strong> transport modes</span></div>
-    </section>
+      <p className="select-prompt"><span>↗</span> Hover and click any route to inspect its journey</p>
+    </section>}
+    {selected && <RoutePanel route={selected} onClose={() => setSelected(null)} />}
     <aside className="controls"><LayerControls exploded={exploded} enabled={enabled} onExplodedChange={setExploded} onModeChange={toggleMode} onReset={() => setViewState({ ...INITIAL_VIEW })} /></aside>
     <div className="map-hint" aria-hidden="true"><span>Drag to orbit</span><span>Scroll to zoom</span></div>
     {error && <div className="error" role="alert">{error}</div>}
     <div className="layer-key" aria-hidden="true">{MODE_ORDER.map(mode => enabled.has(mode) && <div key={mode} style={{ '--mode-color': `rgb(${MODES[mode].color.join(',')})` } as React.CSSProperties}>{MODES[mode].label}</div>)}</div>
-    <footer>Data source: Verkehrsverbund Berlin-Brandenburg GmbH (VBB), used under CC BY 4.0.</footer>
+    <footer>Transport: VBB, CC BY 4.0 · Basemap: OpenFreeMap / OpenMapTiles / OpenStreetMap contributors</footer>
   </main>;
 }

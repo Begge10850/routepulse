@@ -3,11 +3,34 @@ export type ModeId = (typeof MODE_ORDER)[number];
 
 export interface RouteFeature {
   serviceKey: string;
+  routeId: string;
   routeName: string;
+  routeLongName: string;
   mode: ModeId;
   agencyName: string;
   scheduledTripCount: number;
+  termini: string;
   path: [number, number][];
+  stops: RouteStop[];
+}
+
+export interface DelayStats {
+  observations: number;
+  timedObservations: number;
+  early: number;
+  nearSchedule: number;
+  minorDelay: number;
+  seriousDelay: number;
+  medianDelayMinutes: number | null;
+  p90DelayMinutes: number | null;
+}
+
+export interface RouteStop {
+  stopId: string;
+  name: string;
+  sequence: number;
+  position: [number, number];
+  delay: DelayStats | null;
 }
 
 export interface ModeData {

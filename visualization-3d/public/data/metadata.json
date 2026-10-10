@@ -6,32 +6,32 @@
     "bus.json": {
       "routes": 1049,
       "points": 129788,
-      "bytes": 2972378,
-      "sha256": "a3115b0a024b383f2b9c4b27900e98b830e58f6cde45bcc74117a54e2bcadaaf"
+      "bytes": 7887068,
+      "sha256": "5604e125c8aff70752849e13e769b9d97cd0e798829ab264d29ea700b3dc26ec"
     },
     "tram.json": {
       "routes": 43,
       "points": 3127,
-      "bytes": 74097,
-      "sha256": "369b497ff973c661133ab304bece43ad366668038918f83983d7e3f75dbfcf89"
+      "bytes": 302561,
+      "sha256": "6953149951639b3582300ce2df6109fd631edfced98a50f66cdbc150d6b03dfb"
     },
     "ubahn.json": {
       "routes": 9,
       "points": 440,
-      "bytes": 10823,
-      "sha256": "692136407c1bcd8d3e7c2737e9e1485894614f6ca56f787a71732940840f7ab3"
+      "bytes": 63154,
+      "sha256": "c987c7f1d30201a8399720504be97a867db954540fa2f735a38d84ac9109e55f"
     },
     "sbahn.json": {
       "routes": 18,
       "points": 3488,
-      "bytes": 78230,
-      "sha256": "b7b565f16edf5ba41bde5cef08b446479fd98974229564ac4d6aec438f688b03"
+      "bytes": 182710,
+      "sha256": "9e521ae7c4cc3304f5f33f573e776c1fc002042b89d51eeb17a973360daa323c"
     },
     "regional-rail.json": {
       "routes": 54,
       "points": 11198,
-      "bytes": 251368,
-      "sha256": "c5060ca97fca7875f840382439f27b9f6d11db0434fec165d9cb029132d3055e"
+      "bytes": 400636,
+      "sha256": "16fb70776d712a33eadb7e397a86b13c3c70d894b8303aa5f6376e36d7a21308"
     }
   }
 }

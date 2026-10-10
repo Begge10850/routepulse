@@ -16,3 +16,10 @@ def test_generated_data_contract():
             assert len(route["path"]) >= 2
             assert all(math.isfinite(value) for point in route["path"] for value in point)
             assert all(10 <= point[0] <= 16 and 50 <= point[1] <= 55 for point in route["path"])
+            assert route["stops"]
+            assert [s["sequence"] for s in route["stops"]] == sorted(s["sequence"] for s in route["stops"])
+            for stop in route["stops"]:
+                delay = stop["delay"]
+                if delay:
+                    assert delay["timedObservations"] <= delay["observations"]
+                    assert delay["timedObservations"] == sum(delay[key] for key in ("early", "nearSchedule", "minorDelay", "seriousDelay"))
