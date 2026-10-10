@@ -6,10 +6,12 @@ html, body, #root, main { width: 100%; height: 100%; margin: 0; overflow: hidden
 button, input { font: inherit; }
 .map-stage { position: fixed; inset: 0; background: radial-gradient(circle at 58% 48%, #10303a 0, #09181e 32%, #050b0f 72%); }
 .maplibregl-map { font-family: 'DM Sans', system-ui, sans-serif; }
+.theme-atlas .maplibregl-canvas { filter: brightness(1.22) saturate(.68) contrast(.94); }
+.theme-focus .maplibregl-canvas { filter: brightness(.78) saturate(.72) contrast(1.08); }
 .maplibregl-ctrl-attrib { color: #7d9290 !important; background: rgba(5,14,18,.72) !important; font-size: 8px !important; }
 .maplibregl-ctrl-attrib a { color: #91aaa7 !important; }
 .map-stage::after { content: ''; position: absolute; inset: 0; pointer-events: none; transition: background .45s ease; background: linear-gradient(90deg, rgba(4,10,14,.9) 0, rgba(4,10,14,.12) 42%, transparent 70%), radial-gradient(circle at center, transparent 45%, rgba(2,7,10,.52) 100%); }
-.map-stage.theme-atlas::after { background: linear-gradient(90deg, rgba(4,12,18,.88) 0, rgba(6,18,27,.2) 38%, transparent 68%), radial-gradient(circle at 58% 45%, transparent 38%, rgba(1,8,14,.4) 100%); }
+.map-stage.theme-atlas::after { background: linear-gradient(90deg, rgba(4,12,16,.88) 0, rgba(8,18,21,.12) 38%, transparent 68%), radial-gradient(circle at 58% 45%, transparent 42%, rgba(1,8,10,.3) 100%); }
 .masthead { position: fixed; z-index: 3; top: 0; left: 0; right: 0; height: 78px; padding: 0 42px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(191,222,219,.12); background: rgba(6,14,18,.52); backdrop-filter: blur(10px); }
 .brand { color: #f3fbfa; text-decoration: none; font-family: Manrope, sans-serif; font-size: 15px; font-weight: 700; letter-spacing: .13em; }
 .brand span:not(.pulse-mark) { color: #6ee7d2; }

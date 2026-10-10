@@ -58,7 +58,7 @@ export default function App() {
   const routeCount = Object.values(data).reduce((sum, mode) => sum + (mode?.routes.length ?? 0), 0);
 
   return <main>
-    <div className={`map-stage theme-${mapTheme}`}><TransportMap data={data} enabled={enabled} explodeFactor={explodeFactor} mapTheme={mapTheme} viewState={viewState} selected={selected} onSelect={setSelected} onViewStateChange={setViewState} /></div>
+    <div className={`map-stage theme-${mapTheme}`}><TransportMap data={data} enabled={enabled} explodeFactor={explodeFactor} viewState={viewState} selected={selected} onSelect={setSelected} onViewStateChange={setViewState} /></div>
     <header className="masthead">
       <a className="brand" href="#top" aria-label="RoutePulse home"><span className="pulse-mark" />ROUTE<span>PULSE</span></a>
       <span className="prototype-label">3D network prototype</span>
