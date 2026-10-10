@@ -14,7 +14,7 @@ Branch: `codex/routepulse-3d`
 - explicit missing-timing state;
 - responsive desktop and phone journey panels.
 - user-selectable Atlas and Focus basemap treatments;
-- revised violet Regional rail colour, visually distinct from Tram magenta-red.
+- revised ice-silver Regional rail colour, visually distinct from Tram magenta-red without dominating the long-distance network.
 
 ## Delay-method reconciliation
 

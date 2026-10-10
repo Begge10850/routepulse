@@ -52,4 +52,4 @@ The dark geographic reference uses OpenFreeMap/OpenMapTiles data derived from Op
 - inspect timing availability, per-stop median and P90 reported delay, and the share reported more than five minutes late;
 - routes without usable timing remain selectable and explicitly show `No reported timing`.
 - switch between the muted coloured `Atlas` basemap and the near-black `Focus` presentation treatment;
-- distinguish Regional rail with violet rather than the visually similar Tram red.
+- distinguish Regional rail with a restrained ice-silver rather than the visually similar Tram red.
