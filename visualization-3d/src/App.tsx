@@ -12,9 +12,9 @@ const INITIAL_VIEW: MapViewState = { longitude: 13.32, latitude: 52.48, zoom: 7.
 export default function App() {
   const [data, setData] = useState<Partial<Record<ModeId, ModeData>>>({});
   const [enabled, setEnabled] = useState<Set<ModeId>>(new Set(MODE_ORDER));
-  const [exploded, setExploded] = useState(true);
+  const [exploded, setExploded] = useState(false);
   const [mapTheme, setMapTheme] = useState<'atlas' | 'focus'>('atlas');
-  const [explodeFactor, setExplodeFactor] = useState(1);
+  const [explodeFactor, setExplodeFactor] = useState(0);
   const [viewState, setViewState] = useState<MapViewState>(INITIAL_VIEW);
   const [selected, setSelected] = useState<RouteFeature | null>(null);
   const [error, setError] = useState('');

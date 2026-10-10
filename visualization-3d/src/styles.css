@@ -51,9 +51,10 @@ legend { display: flex; justify-content: space-between; width: 100%; margin-bott
 .mode-option input:checked + .checkmark::after { content: '✓'; color: #071015; font-size: 11px; font-weight: 700; }
 .disclaimer { display: flex; gap: 8px; margin: 15px 0 0; color: #688280; font-size: 9px; line-height: 1.45; }
 .disclaimer span { color: #72ddcb; }
-.map-hint { position: fixed; z-index: 2; left: 50%; bottom: 36px; transform: translateX(-50%); display: flex; gap: 18px; color: #718887; font-size: 9px; letter-spacing: .12em; text-transform: uppercase; }
-.layer-key { position: fixed; z-index: 2; right: 330px; bottom: 38px; display: flex; gap: 15px; color: #809695; font-size: 9px; text-transform: uppercase; }
-.layer-key div::before { content: ''; display: inline-block; width: 16px; height: 2px; margin: 0 6px 3px 0; background: var(--mode-color); box-shadow: 0 0 8px var(--mode-color); }
+.map-hint { position: fixed; z-index: 2; left: 50%; bottom: 76px; transform: translateX(-50%); display: flex; gap: 18px; color: #91a5a4; font-size: 9px; letter-spacing: .12em; text-transform: uppercase; }
+.layer-key { position: fixed; z-index: 3; left: 50%; bottom: 22px; transform: translateX(-50%); display: flex; align-items: center; gap: 18px; padding: 11px 16px; border: 1px solid #9dded229; border-radius: 9px; background: #071217e8; box-shadow: 0 8px 26px #0008; color: #d2dfdd; font-size: 9px; font-weight: 700; letter-spacing: .04em; line-height: 1; text-transform: uppercase; white-space: nowrap; }
+.layer-key div { display: flex; align-items: center; gap: 7px; }
+.layer-key div::before { content: ''; display: block; flex: 0 0 auto; width: 19px; height: 3px; border-radius: 99px; background: var(--mode-color); box-shadow: 0 0 8px var(--mode-color); }
 footer { position: fixed; z-index: 2; left: 42px; bottom: 20px; color: #4f6868; font-size: 8px; }
 .error { position: fixed; z-index: 10; left: 50%; top: 90px; transform: translateX(-50%); padding: 10px 16px; background: #7f1d1d; border-radius: 4px; }
 .route-panel { position: fixed; z-index: 4; top: 98px; bottom: 48px; left: 28px; width: min(392px, calc(100vw - 56px)); overflow: hidden; display: flex; flex-direction: column; padding: 22px 22px 0; border: 1px solid rgba(157,202,197,.18); border-radius: 4px; background: rgba(6,18,23,.94); box-shadow: 0 28px 80px rgba(0,0,0,.48); backdrop-filter: blur(20px); }
