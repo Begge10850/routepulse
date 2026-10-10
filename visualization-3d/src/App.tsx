@@ -89,7 +89,7 @@ export default function App() {
       <p className="select-prompt"><span>↗</span> Hover and click any route to inspect its journey</p>
     </section>}
     {selected && <RoutePanel route={selected} onClose={() => setSelected(null)} />}
-    <aside className="controls"><LayerControls exploded={exploded} mapTheme={mapTheme} enabled={enabled} routeColorMode={routeColorMode} focusedRoutes={focusedRoutes} onExplodedChange={setExploded} onMapThemeChange={setMapTheme} onModeChange={toggleMode} onRouteColorModeChange={setRouteColorMode} onRouteSelect={focusRoute} onReset={() => setViewState({ ...INITIAL_VIEW })} /></aside>
+    <aside className="controls"><LayerControls exploded={exploded} mapTheme={mapTheme} enabled={enabled} routeColorMode={routeColorMode} focusedRoutes={focusedRoutes} selectedServiceKey={selected?.serviceKey ?? ''} onExplodedChange={setExploded} onMapThemeChange={setMapTheme} onModeChange={toggleMode} onRouteColorModeChange={setRouteColorMode} onRouteSelect={focusRoute} onReset={() => setViewState({ ...INITIAL_VIEW })} /></aside>
     <div className="map-hint" aria-hidden="true"><span>Drag to orbit</span><span>Scroll to zoom</span></div>
     {error && <div className="error" role="alert">{error}</div>}
     <div className="layer-key" aria-hidden="true">{MODE_ORDER.map(mode => enabled.has(mode) && <div key={mode} style={{ '--mode-color': `rgb(${MODES[mode].color.join(',')})` } as React.CSSProperties}>{MODES[mode].label}</div>)}</div>

@@ -4,7 +4,7 @@ import { LayerControls } from '../src/LayerControls';
 import { MODE_ORDER } from '../src/types';
 
 describe('LayerControls', () => {
-  const routeProps = { routeColorMode: 'modes' as const, focusedRoutes: [], onRouteColorModeChange: vi.fn(), onRouteSelect: vi.fn() };
+  const routeProps = { routeColorMode: 'modes' as const, focusedRoutes: [], selectedServiceKey: '', onRouteColorModeChange: vi.fn(), onRouteSelect: vi.fn() };
 
   it('allows all five modes to remain selected simultaneously', () => {
     render(<LayerControls {...routeProps} exploded mapTheme="atlas" enabled={new Set(MODE_ORDER)} onExplodedChange={vi.fn()} onMapThemeChange={vi.fn()} onModeChange={vi.fn()} onReset={vi.fn()} />);

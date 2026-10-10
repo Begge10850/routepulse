@@ -54,8 +54,8 @@ legend { display: flex; justify-content: space-between; width: 100%; margin-bott
 .line-focus-controls { margin: 14px 0 0; padding-top: 13px; border-top: 1px solid rgba(170,207,204,.1); }
 .line-focus-controls>span,.line-focus-controls>label { display: block; color: #779190; font-size: 9px; letter-spacing: .1em; text-transform: uppercase; }
 .line-focus-controls .view-switch { margin: 8px 0 10px; }
-.line-focus-controls input { width: 100%; margin-top: 7px; padding: 9px 10px; border: 1px solid rgba(164,205,201,.2); border-radius: 3px; outline: 0; background: #071318; color: #d8e7e5; font-size: 11px; }
-.line-focus-controls input:focus { border-color: #76e0ce; box-shadow: 0 0 0 2px #76e0ce22; }
+.line-focus-controls select { width: 100%; margin-top: 7px; padding: 9px 30px 9px 10px; border: 1px solid rgba(164,205,201,.2); border-radius: 3px; outline: 0; background: #071318; color: #d8e7e5; font-size: 11px; cursor: pointer; text-overflow: ellipsis; }
+.line-focus-controls select:focus { border-color: #76e0ce; box-shadow: 0 0 0 2px #76e0ce22; }
 .map-hint { position: fixed; z-index: 2; left: 50%; bottom: 76px; transform: translateX(-50%); display: flex; gap: 18px; color: #91a5a4; font-size: 9px; letter-spacing: .12em; text-transform: uppercase; }
 .layer-key { position: fixed; z-index: 3; left: 50%; bottom: 22px; transform: translateX(-50%); display: flex; align-items: center; gap: 18px; padding: 11px 16px; border: 1px solid #9dded229; border-radius: 9px; background: #071217e8; box-shadow: 0 8px 26px #0008; color: #d2dfdd; font-size: 9px; font-weight: 700; letter-spacing: .04em; line-height: 1; text-transform: uppercase; white-space: nowrap; }
 .layer-key div { display: flex; align-items: center; gap: 7px; }

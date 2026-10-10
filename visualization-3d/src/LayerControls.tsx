@@ -7,6 +7,7 @@ interface Props {
   enabled: Set<ModeId>;
   routeColorMode: 'modes' | 'lines';
   focusedRoutes: RouteFeature[];
+  selectedServiceKey: string;
   onExplodedChange: (value: boolean) => void;
   onMapThemeChange: (value: 'atlas' | 'focus') => void;
   onModeChange: (mode: ModeId, value: boolean) => void;
@@ -15,7 +16,7 @@ interface Props {
   onReset: () => void;
 }
 
-export function LayerControls({ exploded, mapTheme, enabled, routeColorMode, focusedRoutes, onExplodedChange, onMapThemeChange, onModeChange, onRouteColorModeChange, onRouteSelect, onReset }: Props) {
+export function LayerControls({ exploded, mapTheme, enabled, routeColorMode, focusedRoutes, selectedServiceKey, onExplodedChange, onMapThemeChange, onModeChange, onRouteColorModeChange, onRouteSelect, onReset }: Props) {
   return <section className="control-card" aria-label="Transport layer controls">
     <div className="control-heading">
       <div>
@@ -30,7 +31,7 @@ export function LayerControls({ exploded, mapTheme, enabled, routeColorMode, foc
         <button className={routeColorMode === 'modes' ? 'active' : ''} aria-pressed={routeColorMode === 'modes'} onClick={() => onRouteColorModeChange('modes')}>Mode</button>
         <button className={routeColorMode === 'lines' ? 'active' : ''} aria-pressed={routeColorMode === 'lines'} onClick={() => onRouteColorModeChange('lines')}>Lines</button>
       </div>
-      {routeColorMode === 'lines' && <><label htmlFor="route-search">Find a route</label><input id="route-search" list="route-options" placeholder="Type U2, U7, S1…" onChange={(event) => { const route = focusedRoutes.find(item => item.routeName.toLowerCase() === event.target.value.toLowerCase()); if (route) onRouteSelect(route); }} /><datalist id="route-options">{focusedRoutes.map(route => <option key={route.serviceKey} value={route.routeName}>{route.termini}</option>)}</datalist></>}
+      {routeColorMode === 'lines' && <><label htmlFor="route-search">Choose a route</label><select id="route-search" value={selectedServiceKey} onChange={(event) => { const route = focusedRoutes.find(item => item.serviceKey === event.target.value); if (route) onRouteSelect(route); }}><option value="">Select a line…</option>{focusedRoutes.map(route => <option key={route.serviceKey} value={route.serviceKey}>{route.routeName} · {route.termini}</option>)}</select></>}
     </div>}
     <div className="view-switch" role="group" aria-label="Layer arrangement">
       <button className={!exploded ? 'active' : ''} aria-pressed={!exploded} onClick={() => onExplodedChange(false)}>Combined</button>
