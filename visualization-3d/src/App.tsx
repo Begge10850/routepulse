@@ -14,6 +14,7 @@ export default function App() {
   const [enabled, setEnabled] = useState<Set<ModeId>>(new Set(MODE_ORDER));
   const [exploded, setExploded] = useState(false);
   const [mapTheme, setMapTheme] = useState<'atlas' | 'focus'>('atlas');
+  const [routeColorMode, setRouteColorMode] = useState<'modes' | 'lines'>('modes');
   const [explodeFactor, setExplodeFactor] = useState(0);
   const [viewState, setViewState] = useState<MapViewState>(INITIAL_VIEW);
   const [selected, setSelected] = useState<RouteFeature | null>(null);
@@ -48,17 +49,34 @@ export default function App() {
 
   function toggleMode(mode: ModeId, value: boolean) {
     if (!value && selected?.mode === mode) setSelected(null);
-    setEnabled(current => {
-      const next = new Set(current);
-      if (value) next.add(mode); else next.delete(mode);
-      return next;
-    });
+    const next = new Set(enabled);
+    if (value) next.add(mode); else next.delete(mode);
+    setEnabled(next);
+    if (next.size === 1) {
+      const focused = [...next][0];
+      const zoom = focused === 'ubahn' ? 9.2 : focused === 'tram' ? 8.4 : focused === 'sbahn' ? 8 : 7.25;
+      setViewState({ longitude: 13.4, latitude: 52.51, zoom, pitch: 48, bearing: -12 });
+    }
   }
 
   const routeCount = Object.values(data).reduce((sum, mode) => sum + (mode?.routes.length ?? 0), 0);
+  const focusedMode = enabled.size === 1 ? [...enabled][0] : null;
+  const focusedRoutes = focusedMode ? [...(data[focusedMode]?.routes ?? [])].sort((a, b) => a.routeName.localeCompare(b.routeName, undefined, { numeric: true })) : [];
+
+  function focusRoute(route: RouteFeature) {
+    setSelected(route);
+    if (!route.path.length) return;
+    const longitudes = route.path.map(([longitude]) => longitude);
+    const latitudes = route.path.map(([, latitude]) => latitude);
+    const longitude = (Math.min(...longitudes) + Math.max(...longitudes)) / 2;
+    const latitude = (Math.min(...latitudes) + Math.max(...latitudes)) / 2;
+    const span = Math.max(Math.max(...longitudes) - Math.min(...longitudes), (Math.max(...latitudes) - Math.min(...latitudes)) * 1.6, .02);
+    const zoom = Math.max(6, Math.min(12, Math.log2(3 / span) + 7));
+    setViewState({ longitude, latitude, zoom, pitch: 42, bearing: -8 });
+  }
 
   return <main>
-    <div className={`map-stage theme-${mapTheme}`}><TransportMap data={data} enabled={enabled} explodeFactor={explodeFactor} viewState={viewState} selected={selected} onSelect={setSelected} onViewStateChange={setViewState} /></div>
+    <div className={`map-stage theme-${mapTheme}`}><TransportMap data={data} enabled={enabled} explodeFactor={explodeFactor} routeColorMode={routeColorMode} viewState={viewState} selected={selected} onSelect={setSelected} onViewStateChange={setViewState} /></div>
     <header className="masthead">
       <a className="brand" href="#top" aria-label="RoutePulse home"><span className="pulse-mark" />ROUTE<span>PULSE</span></a>
       <span className="prototype-label">3D network prototype</span>
@@ -71,7 +89,7 @@ export default function App() {
       <p className="select-prompt"><span>↗</span> Hover and click any route to inspect its journey</p>
     </section>}
     {selected && <RoutePanel route={selected} onClose={() => setSelected(null)} />}
-    <aside className="controls"><LayerControls exploded={exploded} mapTheme={mapTheme} enabled={enabled} onExplodedChange={setExploded} onMapThemeChange={setMapTheme} onModeChange={toggleMode} onReset={() => setViewState({ ...INITIAL_VIEW })} /></aside>
+    <aside className="controls"><LayerControls exploded={exploded} mapTheme={mapTheme} enabled={enabled} routeColorMode={routeColorMode} focusedRoutes={focusedRoutes} onExplodedChange={setExploded} onMapThemeChange={setMapTheme} onModeChange={toggleMode} onRouteColorModeChange={setRouteColorMode} onRouteSelect={focusRoute} onReset={() => setViewState({ ...INITIAL_VIEW })} /></aside>
     <div className="map-hint" aria-hidden="true"><span>Drag to orbit</span><span>Scroll to zoom</span></div>
     {error && <div className="error" role="alert">{error}</div>}
     <div className="layer-key" aria-hidden="true">{MODE_ORDER.map(mode => enabled.has(mode) && <div key={mode} style={{ '--mode-color': `rgb(${MODES[mode].color.join(',')})` } as React.CSSProperties}>{MODES[mode].label}</div>)}</div>
