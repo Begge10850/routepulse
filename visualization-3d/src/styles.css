@@ -8,7 +8,8 @@ button, input { font: inherit; }
 .maplibregl-map { font-family: 'DM Sans', system-ui, sans-serif; }
 .maplibregl-ctrl-attrib { color: #7d9290 !important; background: rgba(5,14,18,.72) !important; font-size: 8px !important; }
 .maplibregl-ctrl-attrib a { color: #91aaa7 !important; }
-.map-stage::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(90deg, rgba(4,10,14,.9) 0, rgba(4,10,14,.12) 42%, transparent 70%), radial-gradient(circle at center, transparent 45%, rgba(2,7,10,.52) 100%); }
+.map-stage::after { content: ''; position: absolute; inset: 0; pointer-events: none; transition: background .45s ease; background: linear-gradient(90deg, rgba(4,10,14,.9) 0, rgba(4,10,14,.12) 42%, transparent 70%), radial-gradient(circle at center, transparent 45%, rgba(2,7,10,.52) 100%); }
+.map-stage.theme-atlas::after { background: linear-gradient(90deg, rgba(4,12,18,.88) 0, rgba(6,18,27,.2) 38%, transparent 68%), radial-gradient(circle at 58% 45%, transparent 38%, rgba(1,8,14,.4) 100%); }
 .masthead { position: fixed; z-index: 3; top: 0; left: 0; right: 0; height: 78px; padding: 0 42px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(191,222,219,.12); background: rgba(6,14,18,.52); backdrop-filter: blur(10px); }
 .brand { color: #f3fbfa; text-decoration: none; font-family: Manrope, sans-serif; font-size: 15px; font-weight: 700; letter-spacing: .13em; }
 .brand span:not(.pulse-mark) { color: #6ee7d2; }
@@ -33,6 +34,10 @@ h1 em { color: #73e3d2; font-style: normal; }
 .view-switch { display: grid; grid-template-columns: 1fr 1fr; margin: 20px 0; padding: 3px; border: 1px solid rgba(164,205,201,.14); background: #071318; }
 .view-switch button { padding: 9px; border: 0; color: #74908f; background: transparent; font-size: 11px; cursor: pointer; }
 .view-switch button.active { color: #09201f; background: #76e0ce; font-weight: 600; }
+.theme-row { display: flex; align-items: center; justify-content: space-between; margin: -7px 0 16px; color: #779190; font-size: 9px; letter-spacing: .1em; text-transform: uppercase; }
+.theme-switch { display: flex; padding: 2px; border: 1px solid rgba(164,205,201,.13); background: rgba(2,10,13,.45); }
+.theme-switch button { padding: 5px 8px; border: 0; color: #698583; background: transparent; font-size: 8px; text-transform: uppercase; cursor: pointer; }
+.theme-switch button.active { color: #dff9f4; background: rgba(110,231,210,.16); }
 fieldset { padding: 0; border: 0; }
 legend { display: flex; justify-content: space-between; width: 100%; margin-bottom: 7px; color: #779190; font-size: 9px; letter-spacing: .12em; text-transform: uppercase; }
 .mode-list { display: grid; }
@@ -87,6 +92,7 @@ footer { position: fixed; z-index: 2; left: 42px; bottom: 20px; color: #4f6868; 
   .control-card { padding: 14px; }
   .control-heading, .disclaimer { display: none; }
   .view-switch { margin: 0 0 10px; }
+  .theme-row { margin: -4px 0 8px; }
   .mode-list { grid-template-columns: repeat(5, 1fr); gap: 4px; }
   .mode-option { min-height: 46px; padding: 4px; flex-direction: column; justify-content: center; gap: 4px; border: 0; background: rgba(3,11,14,.58); font-size: 8px; text-align: center; }
   .checkmark { width: 13px; height: 13px; }

@@ -3,13 +3,15 @@ import { MODE_ORDER, MODES } from './types';
 
 interface Props {
   exploded: boolean;
+  mapTheme: 'atlas' | 'focus';
   enabled: Set<ModeId>;
   onExplodedChange: (value: boolean) => void;
+  onMapThemeChange: (value: 'atlas' | 'focus') => void;
   onModeChange: (mode: ModeId, value: boolean) => void;
   onReset: () => void;
 }
 
-export function LayerControls({ exploded, enabled, onExplodedChange, onModeChange, onReset }: Props) {
+export function LayerControls({ exploded, mapTheme, enabled, onExplodedChange, onMapThemeChange, onModeChange, onReset }: Props) {
   return <section className="control-card" aria-label="Transport layer controls">
     <div className="control-heading">
       <div>
@@ -21,6 +23,13 @@ export function LayerControls({ exploded, enabled, onExplodedChange, onModeChang
     <div className="view-switch" role="group" aria-label="Layer arrangement">
       <button className={!exploded ? 'active' : ''} aria-pressed={!exploded} onClick={() => onExplodedChange(false)}>Combined</button>
       <button className={exploded ? 'active' : ''} aria-pressed={exploded} onClick={() => onExplodedChange(true)}>Exploded</button>
+    </div>
+    <div className="theme-row">
+      <span>Map treatment</span>
+      <div className="theme-switch" role="group" aria-label="Map treatment">
+        <button className={mapTheme === 'atlas' ? 'active' : ''} aria-pressed={mapTheme === 'atlas'} onClick={() => onMapThemeChange('atlas')}>Atlas</button>
+        <button className={mapTheme === 'focus' ? 'active' : ''} aria-pressed={mapTheme === 'focus'} onClick={() => onMapThemeChange('focus')}>Focus</button>
+      </div>
     </div>
     <fieldset>
       <legend>Visible modes <span>{enabled.size}/5</span></legend>

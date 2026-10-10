@@ -9,12 +9,12 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import type { ModeData, ModeId, RouteFeature, RouteStop } from './types';
 import { MODE_ORDER, MODES } from './types';
 
-interface Props { data: Partial<Record<ModeId, ModeData>>; enabled: Set<ModeId>; explodeFactor: number; viewState: MapViewState; selected: RouteFeature | null; onSelect: (route: RouteFeature | null) => void; onViewStateChange: (view: MapViewState) => void; }
+interface Props { data: Partial<Record<ModeId, ModeData>>; enabled: Set<ModeId>; explodeFactor: number; mapTheme: 'atlas' | 'focus'; viewState: MapViewState; selected: RouteFeature | null; onSelect: (route: RouteFeature | null) => void; onViewStateChange: (view: MapViewState) => void; }
 
 const referencePlane = [[12.5, 51.95], [14.15, 51.95], [14.15, 53.15], [12.5, 53.15]] as [number, number][];
 setWorkerUrl(workerUrl);
 
-export function TransportMap({ data, enabled, explodeFactor, viewState, selected, onSelect, onViewStateChange }: Props) {
+export function TransportMap({ data, enabled, explodeFactor, mapTheme, viewState, selected, onSelect, onViewStateChange }: Props) {
   const layers = useMemo(() => {
     const plane = new PolygonLayer({ id: 'reference-plane', data: [{ polygon: referencePlane }], getPolygon: d => d.polygon, getFillColor: [10, 29, 36, 18], getLineColor: [104, 139, 147, 80], lineWidthMinPixels: 1, stroked: true, filled: true, pickable: false });
     const paths = MODE_ORDER.map((mode) => new PathLayer<RouteFeature>({
@@ -50,6 +50,6 @@ export function TransportMap({ data, enabled, explodeFactor, viewState, selected
     getTooltip={({ object }: PickingInfo<RouteFeature>) => object ? { text: `${object.routeName} · ${MODES[object.mode].label}\n${object.termini}` } : null}
     getCursor={({ isDragging }) => isDragging ? 'grabbing' : 'grab'}
   >
-    <Map mapStyle="https://tiles.openfreemap.org/styles/dark" reuseMaps />
+    <Map mapStyle={`https://tiles.openfreemap.org/styles/${mapTheme === 'atlas' ? 'fiord' : 'dark'}`} reuseMaps />
   </DeckGL>;
 }

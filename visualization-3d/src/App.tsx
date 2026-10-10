@@ -13,6 +13,7 @@ export default function App() {
   const [data, setData] = useState<Partial<Record<ModeId, ModeData>>>({});
   const [enabled, setEnabled] = useState<Set<ModeId>>(new Set(MODE_ORDER));
   const [exploded, setExploded] = useState(true);
+  const [mapTheme, setMapTheme] = useState<'atlas' | 'focus'>('atlas');
   const [explodeFactor, setExplodeFactor] = useState(1);
   const [viewState, setViewState] = useState<MapViewState>(INITIAL_VIEW);
   const [selected, setSelected] = useState<RouteFeature | null>(null);
@@ -57,7 +58,7 @@ export default function App() {
   const routeCount = Object.values(data).reduce((sum, mode) => sum + (mode?.routes.length ?? 0), 0);
 
   return <main>
-    <div className="map-stage"><TransportMap data={data} enabled={enabled} explodeFactor={explodeFactor} viewState={viewState} selected={selected} onSelect={setSelected} onViewStateChange={setViewState} /></div>
+    <div className={`map-stage theme-${mapTheme}`}><TransportMap data={data} enabled={enabled} explodeFactor={explodeFactor} mapTheme={mapTheme} viewState={viewState} selected={selected} onSelect={setSelected} onViewStateChange={setViewState} /></div>
     <header className="masthead">
       <a className="brand" href="#top" aria-label="RoutePulse home"><span className="pulse-mark" />ROUTE<span>PULSE</span></a>
       <span className="prototype-label">3D network prototype</span>
@@ -70,7 +71,7 @@ export default function App() {
       <p className="select-prompt"><span>↗</span> Hover and click any route to inspect its journey</p>
     </section>}
     {selected && <RoutePanel route={selected} onClose={() => setSelected(null)} />}
-    <aside className="controls"><LayerControls exploded={exploded} enabled={enabled} onExplodedChange={setExploded} onModeChange={toggleMode} onReset={() => setViewState({ ...INITIAL_VIEW })} /></aside>
+    <aside className="controls"><LayerControls exploded={exploded} mapTheme={mapTheme} enabled={enabled} onExplodedChange={setExploded} onMapThemeChange={setMapTheme} onModeChange={toggleMode} onReset={() => setViewState({ ...INITIAL_VIEW })} /></aside>
     <div className="map-hint" aria-hidden="true"><span>Drag to orbit</span><span>Scroll to zoom</span></div>
     {error && <div className="error" role="alert">{error}</div>}
     <div className="layer-key" aria-hidden="true">{MODE_ORDER.map(mode => enabled.has(mode) && <div key={mode} style={{ '--mode-color': `rgb(${MODES[mode].color.join(',')})` } as React.CSSProperties}>{MODES[mode].label}</div>)}</div>

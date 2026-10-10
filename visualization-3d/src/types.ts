@@ -50,5 +50,5 @@ export const MODES: Record<ModeId, ModeConfig> = {
   tram: { label: 'Tram', color: [225, 29, 72], elevation: 24000, file: 'tram.json' },
   ubahn: { label: 'U-Bahn', color: [59, 130, 246], elevation: 36000, file: 'ubahn.json' },
   sbahn: { label: 'S-Bahn', color: [34, 197, 94], elevation: 48000, file: 'sbahn.json' },
-  regional: { label: 'Regional rail', color: [239, 68, 68], elevation: 60000, file: 'regional-rail.json' },
+  regional: { label: 'Regional rail', color: [168, 85, 247], elevation: 60000, file: 'regional-rail.json' },
 };

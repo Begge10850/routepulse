@@ -13,6 +13,8 @@ Branch: `codex/routepulse-3d`
 - reported-delay journey bars, timing availability, timed-visit counts, median, P90 and serious-delay share;
 - explicit missing-timing state;
 - responsive desktop and phone journey panels.
+- user-selectable Atlas and Focus basemap treatments;
+- revised violet Regional rail colour, visually distinct from Tram magenta-red.
 
 ## Delay-method reconciliation
 
